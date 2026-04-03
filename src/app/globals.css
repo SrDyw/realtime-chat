@@ -17,6 +17,20 @@ body {
   color: var(--color-fg);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   transition: background-color 0.3s, color 0.3s;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, currentColor 1px, transparent 1px),
+    linear-gradient(to bottom, currentColor 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.1;
+  pointer-events: none;
+  z-index: -1;
 }
 
 @theme inline {
