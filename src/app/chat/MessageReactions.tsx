@@ -14,11 +14,12 @@ interface MessageReactionsProps {
   reactions?: Reaction[];
   currentUserId: string;
   onReact: (emoji: string) => void;
+  onShowDetails?: () => void;
 }
 
 const REACTIONS = ["❤️", "😂", "😮", "😢", "👍", "🔥"];
 
-export function MessageReactions({ children, isOwn = false, reactions = [], currentUserId, onReact }: MessageReactionsProps) {
+export function MessageReactions({ children, isOwn = false, reactions = [], currentUserId, onReact, onShowDetails }: MessageReactionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -76,7 +77,13 @@ export function MessageReactions({ children, isOwn = false, reactions = [], curr
         
         {reactions.length > 0 && (
           <div className={`mt-1 ${isOwn ? "flex justify-end" : "flex justify-start"}`}>
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full bg-white/90 dark:bg-zinc-800/90 shadow-sm border border-gray-200 dark:border-zinc-700 ${isOwn ? "order-1" : ""}`}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onShowDetails?.();
+              }}
+              className={`flex items-center gap-1 px-2 py-1 rounded-full bg-white/90 dark:bg-zinc-800/90 shadow-sm border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors ${isOwn ? "order-1" : ""}`}
+            >
               {Object.entries(groupedReactions).map(([emoji, users]) => (
                 <span key={emoji} className="relative group">
                   <span className="text-sm">{emoji}</span>
@@ -85,7 +92,7 @@ export function MessageReactions({ children, isOwn = false, reactions = [], curr
                   </span>
                 </span>
               ))}
-            </div>
+            </button>
           </div>
         )}
       </div>

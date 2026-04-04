@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { MessageReactions } from "./MessageReactions";
+import { Modal } from "./Modal";
 
 interface Reaction {
   emoji: string;
@@ -25,6 +27,8 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message, currentUserId, onReact }: MessageBubbleProps) {
+  const [showDetails, setShowDetails] = useState(false);
+
   if (message.isSystem) {
     return (
       <div className="flex justify-center">
@@ -33,33 +37,72 @@ export function MessageBubble({ message, currentUserId, onReact }: MessageBubble
     );
   }
 
+  const groupedReactions = message.reactions?.reduce((acc, r) => {
+    if (!acc[r.emoji]) {
+      acc[r.emoji] = [];
+    }
+    acc[r.emoji].push(r);
+    return acc;
+  }, {} as Record<string, Reaction[]>) || {};
+
   return (
-    <MessageReactions
-      isOwn={message.isOwn}
-      reactions={message.reactions}
-      currentUserId={currentUserId}
-      onReact={(emoji) => onReact(message.id, emoji)}
-    >
-      <div className={`flex ${message.isOwn ? "justify-end" : "justify-start"}`}>
+    <>
+      <MessageReactions
+        isOwn={message.isOwn}
+        reactions={message.reactions}
+        currentUserId={currentUserId}
+        onReact={(emoji) => onReact(message.id, emoji)}
+        onShowDetails={() => setShowDetails(true)}
+      >
         <div
-          className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-            message.isOwn
-              ? "bg-violet-600 text-white rounded-br-md"
-              : "bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-100 rounded-bl-md shadow-sm"
-          }`}
+          onClick={() => setShowDetails(true)}
+          className={`flex ${message.isOwn ? "justify-end" : "justify-start"}`}
         >
-          {!message.isOwn && (
+          <div
+            className={`max-w-[70%] rounded-2xl px-4 py-2 cursor-pointer hover:bg-opacity-90 transition-colors ${
+              message.isOwn
+                ? "bg-violet-600 text-white rounded-br-md"
+                : "bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-100 rounded-bl-md shadow-sm"
+            }`}
+          >
+            {!message.isOwn && (
+              <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">
+                {message.user}
+              </p>
+            )}
+            <p className="text-sm break-words">{message.text}</p>
+            <p className={`text-xs mt-1 ${message.isOwn ? "text-violet-200" : "text-gray-400"}`}>
+              {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </p>
+          </div>
+        </div>
+      </MessageReactions>
+
+      <Modal isOpen={showDetails} onClose={() => setShowDetails(false)} title="Detalles del mensaje">
+        <div className="bg-white dark:bg-zinc-700 rounded-2xl px-4 py-2 max-w-full">
             <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">
               {message.user}
             </p>
+            <p className="text-gray-800 dark:text-white break-words">{message.text}</p>
+            <p className="text-xs mt-1 text-gray-400">
+              {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </p>
+          </div>
+
+          {message.reactions && message.reactions.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {Object.entries(groupedReactions).map(([emoji, users]) => (
+                <div key={emoji} className="flex items-center gap-1 bg-gray-100 dark:bg-zinc-700 px-2 py-1 rounded-full">
+                  <span className="text-sm">{emoji}</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-300">
+                    {users.map(u => u.userName === currentUserId ? "Tú" : u.userName).join(", ")}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
-          <p className="text-sm">{message.text}</p>
-          <p className={`text-xs mt-1 ${message.isOwn ? "text-violet-200" : "text-gray-400"}`}>
-            {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </p>
-        </div>
-      </div>
-    </MessageReactions>
+      </Modal>
+    </>
   );
 }
 
