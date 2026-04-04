@@ -1,5 +1,13 @@
 "use client";
 
+import { MessageReactions } from "./MessageReactions";
+
+interface Reaction {
+  emoji: string;
+  userId: string;
+  userName: string;
+}
+
 interface Message {
   id: string;
   user: string;
@@ -7,13 +15,16 @@ interface Message {
   timestamp: string;
   isSystem?: boolean;
   isOwn?: boolean;
+  reactions?: Reaction[];
 }
 
 interface MessageBubbleProps {
   message: Message;
+  currentUserId: string;
+  onReact: (messageId: string, emoji: string) => void;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, currentUserId, onReact }: MessageBubbleProps) {
   if (message.isSystem) {
     return (
       <div className="flex justify-center">
@@ -23,38 +34,45 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   }
 
   return (
-    <div className={`flex ${message.isOwn ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-          message.isOwn
-            ? "bg-violet-600 text-white rounded-br-md"
-            : "bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-100 rounded-bl-md shadow-sm"
-        }`}
-      >
-        {!message.isOwn && (
-          <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">
-            {message.user}
+    <MessageReactions
+      isOwn={message.isOwn}
+      reactions={message.reactions}
+      currentUserId={currentUserId}
+      onReact={(emoji) => onReact(message.id, emoji)}
+    >
+      <div className={`flex ${message.isOwn ? "justify-end" : "justify-start"}`}>
+        <div
+          className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+            message.isOwn
+              ? "bg-violet-600 text-white rounded-br-md"
+              : "bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-100 rounded-bl-md shadow-sm"
+          }`}
+        >
+          {!message.isOwn && (
+            <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">
+              {message.user}
+            </p>
+          )}
+          <p className="text-sm">{message.text}</p>
+          <p className={`text-xs mt-1 ${message.isOwn ? "text-violet-200" : "text-gray-400"}`}>
+            {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </p>
-        )}
-        <p className="text-sm">{message.text}</p>
-        <p className={`text-xs mt-1 ${message.isOwn ? "text-violet-200" : "text-gray-400"}`}>
-          {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-        </p>
+        </div>
       </div>
-    </div>
+    </MessageReactions>
   );
 }
 
 interface MessageListProps {
   messages: Message[];
+  currentUserId: string;
+  onReact: (messageId: string, emoji: string) => void;
 }
 
-export function MessageList({ messages }: MessageListProps) {
-  const messagesEndRef = { current: null as HTMLDivElement | null };
-
+export function MessageList({ messages, currentUserId, onReact }: MessageListProps) {
   return (
     <main className="flex-1 overflow-y-auto p-4">
-      <div className="max-w-4xl mx-auto space-y-4">
+      <div className="max-w-4xl mx-auto space-y-4 pb-12">
         {messages.length === 0 ? (
           <div className="text-center py-12">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-200 dark:bg-zinc-800 mb-4">
@@ -68,9 +86,8 @@ export function MessageList({ messages }: MessageListProps) {
         ) : (
           <>
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
+              <MessageBubble key={msg.id} message={msg} currentUserId={currentUserId} onReact={onReact} />
             ))}
-            <div ref={messagesEndRef} />
           </>
         )}
       </div>

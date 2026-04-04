@@ -1,6 +1,12 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { subscribeToChannel, unsubscribeFromChannel } from "@/lib/pusher-client";
 
+interface Reaction {
+  emoji: string;
+  userId: string;
+  userName: string;
+}
+
 interface Message {
   id: string;
   user: string;
@@ -8,11 +14,7 @@ interface Message {
   timestamp: string;
   isSystem?: boolean;
   isOwn?: boolean;
-}
-
-interface UserInfo {
-  id: string;
-  name: string;
+  reactions?: Reaction[];
 }
 
 let messageCounter = 0;
@@ -26,21 +28,17 @@ function generateMessageId(): string {
 export function useChat(username: string, room: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [users, setUsers] = useState<UserInfo[]>([]);
+  const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
   const lastMessageIdRef = useRef<string>("");
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<ReturnType<typeof subscribeToChannel> | null>(null);
   const pendingMessageIdsRef = useRef<Set<string>>(new Set());
+  const pendingReactionsRef = useRef<Set<string>>(new Set());
+  const messagesRef = useRef<Message[]>([]);
 
-  const addSystemMessage = useCallback((text: string) => {
-    setMessages((prev) => [...prev, {
-      id: generateMessageId(),
-      user: "Sistema",
-      text,
-      timestamp: new Date().toISOString(),
-      isSystem: true,
-    }]);
-  }, []);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -88,22 +86,15 @@ export function useChat(username: string, room: string) {
 
   const registerPresence = useCallback(async () => {
     try {
-      const response = await fetch("/api/presence", {
+      await fetch("/api/presence", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: username, userName: username, room }),
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.isFirstJoin) {
-          await fetchUsers();
-        }
-      }
     } catch {
       // Silently fail
     }
-  }, [username, room, fetchUsers]);
+  }, [username, room]);
 
   const handleDisconnect = useCallback(async () => {
     try {
@@ -114,6 +105,55 @@ export function useChat(username: string, room: string) {
       // Silently fail
     }
   }, [username, room]);
+
+  const addReaction = useCallback((messageId: string, emoji: string) => {
+    const msg = messagesRef.current.find(m => m.id === messageId);
+    const existingUserReaction = msg?.reactions?.find(r => r.userId === username);
+    
+    const reactionKey = `${messageId}-${emoji}-${username}`;
+    
+    if (existingUserReaction?.emoji === emoji) {
+      pendingReactionsRef.current.add(reactionKey);
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id === messageId) {
+            return {
+              ...m,
+              reactions: (m.reactions || []).filter((r) => !(r.emoji === emoji && r.userId === username)),
+            };
+          }
+          return m;
+        })
+      );
+      
+      fetch(`/api/messages/reaction`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ room, messageId, emoji, userId: username, userName: username }),
+      });
+      return;
+    }
+
+    pendingReactionsRef.current.add(reactionKey);
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id === messageId) {
+          const filteredReactions = (m.reactions || []).filter(r => r.userId !== username);
+          return {
+            ...m,
+            reactions: [...filteredReactions, { emoji, userId: username, userName: username }],
+          };
+        }
+        return m;
+      })
+    );
+
+    fetch(`/api/messages/reaction`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ room, messageId, emoji, userId: username, userName: username }),
+    });
+  }, [room, username]);
 
   useEffect(() => {
     const channelName = `chat-${room}`;
@@ -152,6 +192,30 @@ export function useChat(username: string, room: string) {
 
     channel.bind("user-left", () => {
       fetchUsers();
+    });
+
+    channel.bind("message-reaction", (data: { messageId: string; emoji: string; userId: string; userName: string }) => {
+      const reactionKey = `${data.messageId}-${data.emoji}-${data.userId}`;
+      
+      if (pendingReactionsRef.current.has(reactionKey)) {
+        pendingReactionsRef.current.delete(reactionKey);
+        return;
+      }
+
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id === data.messageId) {
+            const reactions = msg.reactions || [];
+            const filteredReactions = reactions.filter(r => r.userId !== data.userId);
+            
+            return {
+              ...msg,
+              reactions: [...filteredReactions, { emoji: data.emoji, userId: data.userId, userName: data.userName }],
+            };
+          }
+          return msg;
+        })
+      );
     });
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -217,5 +281,5 @@ export function useChat(username: string, room: string) {
     }
   }, [username, room]);
 
-  return { messages, isConnected, users, sendMessage };
+  return { messages, isConnected, users, sendMessage, addReaction };
 }

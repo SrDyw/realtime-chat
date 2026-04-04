@@ -9,7 +9,7 @@ import { useChat } from "./useChat";
 import { useTheme } from "../hooks/useTheme";
 
 function ChatContentInner({ username, room }: { username: string; room: string }) {
-  const { messages, isConnected, users, sendMessage } = useChat(username, room);
+  const { messages, isConnected, users, sendMessage, addReaction } = useChat(username, room);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -19,7 +19,11 @@ function ChatContentInner({ username, room }: { username: string; room: string }
   return (
     <div className="min-h-screen flex flex-col bg-gray-100 dark:bg-zinc-900">
       <ChatHeader room={room} isConnected={isConnected} users={users} />
-      <MessageList messages={messages} />
+      <MessageList 
+        messages={messages} 
+        currentUserId={username} 
+        onReact={(messageId, emoji) => addReaction(messageId, emoji)} 
+      />
       <MessageInput onSend={sendMessage} />
     </div>
   );
