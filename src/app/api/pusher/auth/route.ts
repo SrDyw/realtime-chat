@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import Pusher from "pusher";
 
 export async function POST(request: Request) {
-  const { socketId, channelName } = await request.json();
+  const body = await request.json();
+  const { socket_id, channel_name } = body;
 
   const pusher = new Pusher({
     appId: process.env.PUSHER_APP_ID!,
@@ -12,10 +13,15 @@ export async function POST(request: Request) {
     useTLS: true,
   });
 
-  try {
-    const auth = pusher.authenticate(socketId, channelName);
+  if (channel_name.startsWith("presence-")) {
+    const presenceData = {
+      user_id: socket_id,
+      user_info: body.user_info || { name: body.username || "Usuario" },
+    };
+    const auth = pusher.authenticate(socket_id, channel_name, presenceData);
     return NextResponse.json(auth);
-  } catch (error) {
-    return NextResponse.json({ error: "Authentication failed" }, { status: 403 });
   }
+
+  const auth = pusher.authenticate(socket_id, channel_name);
+  return NextResponse.json(auth);
 }

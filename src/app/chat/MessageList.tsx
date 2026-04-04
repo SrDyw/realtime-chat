@@ -14,32 +14,32 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
+  if (message.isSystem) {
+    return (
+      <div className="flex justify-center">
+        <p className="text-sm text-gray-500 dark:text-gray-400 italic">{message.text}</p>
+      </div>
+    );
+  }
+
   return (
     <div className={`flex ${message.isOwn ? "justify-end" : "justify-start"}`}>
       <div
         className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-          message.isSystem
-            ? "bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 text-center w-full max-w-full"
-            : message.isOwn
-              ? "bg-violet-600 text-white rounded-br-md"
-              : "bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-100 rounded-bl-md shadow-sm"
+          message.isOwn
+            ? "bg-violet-600 text-white rounded-br-md"
+            : "bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-100 rounded-bl-md shadow-sm"
         }`}
       >
-        {message.isSystem ? (
-          <p className="text-sm text-center">{message.text}</p>
-        ) : (
-          <>
-            {!message.isOwn && (
-              <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">
-                {message.user}
-              </p>
-            )}
-            <p className="text-sm">{message.text}</p>
-            <p className={`text-xs mt-1 ${message.isOwn ? "text-violet-200" : "text-gray-400"}`}>
-              {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </p>
-          </>
+        {!message.isOwn && (
+          <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">
+            {message.user}
+          </p>
         )}
+        <p className="text-sm">{message.text}</p>
+        <p className={`text-xs mt-1 ${message.isOwn ? "text-violet-200" : "text-gray-400"}`}>
+          {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </p>
       </div>
     </div>
   );
