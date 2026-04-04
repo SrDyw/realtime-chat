@@ -10,6 +10,11 @@ interface Message {
   isOwn?: boolean;
 }
 
+interface UserInfo {
+  id: string;
+  name: string;
+}
+
 let messageCounter = 0;
 let currentUserId: string | null = null;
 let currentRoom: string | null = null;
@@ -21,7 +26,7 @@ function generateMessageId(): string {
 export function useChat(username: string, room: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [userCount, setUserCount] = useState(1);
+  const [users, setUsers] = useState<UserInfo[]>([]);
   const lastMessageIdRef = useRef<string>("");
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<ReturnType<typeof subscribeToChannel> | null>(null);
@@ -69,6 +74,18 @@ export function useChat(username: string, room: string) {
     }
   }, [username, room]);
 
+  const fetchUsers = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/presence?room=${room}`);
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users || []);
+      }
+    } catch {
+      // Silently fail
+    }
+  }, [room]);
+
   const registerPresence = useCallback(async () => {
     try {
       const response = await fetch("/api/presence", {
@@ -79,12 +96,14 @@ export function useChat(username: string, room: string) {
       
       if (response.ok) {
         const data = await response.json();
-        setUserCount(data.count);
+        if (data.isFirstJoin) {
+          await fetchUsers();
+        }
       }
     } catch {
       // Silently fail
     }
-  }, [username, room]);
+  }, [username, room, fetchUsers]);
 
   const handleDisconnect = useCallback(async () => {
     try {
@@ -127,12 +146,12 @@ export function useChat(username: string, room: string) {
       }
     });
 
-    channel.bind("user-joined", (data: { userName: string }) => {
-      addSystemMessage(`${data.userName} se ha unido al chat`);
+    channel.bind("user-joined", () => {
+      fetchUsers();
     });
 
-    channel.bind("user-left", (data: { userName: string }) => {
-      addSystemMessage(`${data.userName} ha abandonado el chat`);
+    channel.bind("user-left", () => {
+      fetchUsers();
     });
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -141,7 +160,12 @@ export function useChat(username: string, room: string) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchMessages().then(() => setIsConnected(true));
 
-    intervalRef.current = setInterval(registerPresence, 5000);
+    fetchUsers();
+
+    intervalRef.current = setInterval(() => {
+      fetchMessages();
+      fetchUsers();
+    }, 5000);
 
     const handleBeforeUnload = () => {
       if (currentUserId === username && currentRoom === room) {
@@ -164,7 +188,7 @@ export function useChat(username: string, room: string) {
       }
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [room, username, fetchMessages, registerPresence, handleDisconnect, addSystemMessage]);
+  }, [room, username, fetchMessages, registerPresence, handleDisconnect, fetchUsers]);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
@@ -193,5 +217,5 @@ export function useChat(username: string, room: string) {
     }
   }, [username, room]);
 
-  return { messages, isConnected, userCount, sendMessage };
+  return { messages, isConnected, users, sendMessage };
 }
