@@ -35,9 +35,8 @@ function JoinPageInner() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-100 via-purple-50 to-fuchsia-50 dark:from-violet-950 dark:via-purple-950 dark:fuchsia-950 p-4">
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM3YTdjOWEiIGZpbGwtb3BhY2l0eT0iMC40Ij48cGF0aCBkPSJNMzYgMzRoLTJ2LTJoMnptLTItMmgtMnYtMmgyem0tMi0yaC0ydi0yaDJ6bTItMmgtMnYtMmgyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-40 dark:opacity-20"></div>
-      
+    <div className="min-h-screen flex items-center justify-center  p-4">
+      <div className="absolute size-full opacity-5 top-0 left-0 bg-gradient-to-br from-violet-100 via-purple-50 to-fuchsia-50 dark:from-violet-950 dark:via-purple-950 dark:fuchsia-950"></div>
       <div className="relative w-full max-w-md">
         <div className="backdrop-blur-xl bg-white/70 dark:bg-zinc-900/70 rounded-3xl border border-white/50 dark:border-zinc-700/50 shadow-2xl shadow-purple-500/20 dark:shadow-purple-900/30 p-8">
           <div className="text-center mb-8">
