@@ -27,7 +27,10 @@ function JoinPageInner() {
       room: room.trim() || "general",
     };
 
-    const params = new URLSearchParams(joinData as Record<string, string>);
+    const params = new URLSearchParams({
+      username: joinData.username,
+      room: joinData.room,
+    });
     router.push(`/chat?${params.toString()}`);
   };
 

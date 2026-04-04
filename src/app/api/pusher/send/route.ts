@@ -8,7 +8,6 @@ export async function POST(request: Request) {
     await triggerEvent(`chat-${room}`, "new-message", message);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Pusher error:", error);
     return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
   }
 }

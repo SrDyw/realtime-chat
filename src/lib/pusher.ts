@@ -1,16 +1,16 @@
 import Pusher from "pusher";
+import "server-only";
 
 const pusherServer = new Pusher({
-  appId: "2136796",
-  key: "ba23fd7d4676497d9857",
-  secret: "e095304d03be1fe6819f",
-  cluster: "us3",
+  appId: process.env.PUSHER_APP_ID!,
+  key: process.env.PUSHER_KEY!,
+  secret: process.env.PUSHER_SECRET!,
+  cluster: process.env.PUSHER_CLUSTER!,
   useTLS: true,
 });
 
 export { pusherServer };
 
-export async function triggerEvent(channel: string, event: string, data: any) {
-  console.log("Trigger event");
+export async function triggerEvent(channel: string, event: string, data: unknown) {
   await pusherServer.trigger(channel, event, data);
 }
