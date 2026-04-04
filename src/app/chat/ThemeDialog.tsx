@@ -1,17 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
-export function ThemeDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const [darkMode, setDarkMode] = useState(false);
+export function ThemeDialog({ isOpen, onClose, darkMode, onThemeChange }: { 
+  isOpen: boolean; 
+  onClose: () => void;
+  darkMode: boolean;
+  onThemeChange: (isDark: boolean) => void;
+}) {
   const dialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      const stored = localStorage.getItem("theme");
-      setDarkMode(stored === "dark" || (!stored && window.matchMedia("(prefers-color-scheme: dark)").matches));
-    }
-  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -26,9 +23,7 @@ export function ThemeDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   }, [isOpen, onClose]);
 
   const toggleTheme = (isDark: boolean) => {
-    setDarkMode(isDark);
-    localStorage.setItem("theme", isDark ? "dark" : "light");
-    document.documentElement.classList.toggle("dark", isDark);
+    onThemeChange(isDark);
     onClose();
   };
 

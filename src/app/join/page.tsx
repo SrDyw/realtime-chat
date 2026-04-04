@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "../hooks/useTheme";
 
 interface JoinData {
   username: string;
   room: string;
 }
 
-export default function JoinPage() {
+function JoinPageInner() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [room, setRoom] = useState("");
@@ -110,4 +111,18 @@ export default function JoinPage() {
       </div>
     </div>
   );
+}
+
+export default function JoinPage() {
+  const { mounted } = useTheme();
+  
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-zinc-900">
+        <div className="text-gray-500 dark:text-gray-400">Cargando...</div>
+      </div>
+    );
+  }
+  
+  return <JoinPageInner />;
 }

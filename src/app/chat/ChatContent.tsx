@@ -3,22 +3,17 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { ThemeDialog } from "./ThemeDialog";
+import { useChat } from "./useChat";
+import { useTheme } from "../hooks/useTheme";
 
-interface Message {
-  id: string;
-  user: string;
-  text: string;
-  timestamp: Date;
-  isOwn: boolean;
-}
-
-export default function ChatContent() {
+function ChatContentInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const username = searchParams.get("username") || "Anonimo";
   const room = searchParams.get("room") || "general";
   
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { messages, isConnected, userCount, sendMessage } = useChat(username, room);
+  const { darkMode, toggleTheme } = useTheme();
   const [inputValue, setInputValue] = useState("");
   const [showMenu, setShowMenu] = useState(false);
   const [showThemeDialog, setShowThemeDialog] = useState(false);
@@ -39,19 +34,10 @@ export default function ChatContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
-
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      user: username,
-      text: inputValue.trim(),
-      timestamp: new Date(),
-      isOwn: true,
-    };
-
-    setMessages((prev) => [...prev, newMessage]);
+    sendMessage(inputValue.trim());
     setInputValue("");
   };
 
@@ -66,8 +52,11 @@ export default function ChatContent() {
               </svg>
             </div>
             <div>
-              <h1 className="font-semibold text-gray-800 dark:text-white">Chat {room}</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{username}</p>
+              <div className="flex items-center gap-2">
+                <h1 className="font-semibold text-gray-800 dark:text-white">Chat {room}</h1>
+                <span className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}></span>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{userCount} usuario{userCount !== 1 ? "s" : ""}</p>
             </div>
           </div>
           <div className="relative" ref={menuRef}>
@@ -130,20 +119,28 @@ export default function ChatContent() {
               >
                 <div
                   className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                    msg.isOwn
-                      ? "bg-violet-600 text-white rounded-br-md"
-                      : "bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-100 rounded-bl-md shadow-sm"
+                    msg.isSystem
+                      ? "bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 text-center w-full max-w-full"
+                      : msg.isOwn
+                        ? "bg-violet-600 text-white rounded-br-md"
+                        : "bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-100 rounded-bl-md shadow-sm"
                   }`}
                 >
-                  {!msg.isOwn && (
-                    <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">
-                      {msg.user}
-                    </p>
+                  {msg.isSystem ? (
+                    <p className="text-sm text-center">{msg.text}</p>
+                  ) : (
+                    <>
+                      {!msg.isOwn && (
+                        <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">
+                          {msg.user}
+                        </p>
+                      )}
+                      <p className="text-sm">{msg.text}</p>
+                      <p className={`text-xs mt-1 ${msg.isOwn ? "text-violet-200" : "text-gray-400"}`}>
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </>
                   )}
-                  <p className="text-sm">{msg.text}</p>
-                  <p className={`text-xs mt-1 ${msg.isOwn ? "text-violet-200" : "text-gray-400"}`}>
-                    {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </p>
                 </div>
               </div>
             ))
@@ -153,7 +150,7 @@ export default function ChatContent() {
       </main>
 
       <footer className="sticky bottom-0 backdrop-blur-xl bg-white/80 dark:bg-zinc-900/80 border-t border-gray-200 dark:border-zinc-700 p-4">
-        <form onSubmit={sendMessage} className="max-w-4xl mx-auto flex gap-3">
+        <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-3">
           <input
             type="text"
             value={inputValue}
@@ -172,7 +169,21 @@ export default function ChatContent() {
           </button>
         </form>
       </footer>
-      <ThemeDialog isOpen={showThemeDialog} onClose={() => setShowThemeDialog(false)} />
+      <ThemeDialog isOpen={showThemeDialog} onClose={() => setShowThemeDialog(false)} darkMode={darkMode} onThemeChange={toggleTheme} />
     </div>
   );
+}
+
+export default function ChatContent() {
+  const { mounted } = useTheme();
+  
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-zinc-900">
+        <div className="text-gray-500 dark:text-gray-400">Cargando...</div>
+      </div>
+    );
+  }
+  
+  return <ChatContentInner />;
 }
