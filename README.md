@@ -1,76 +1,80 @@
 # QuickChat
 
-Chat en tiempo real construido con Next.js y Pusher.
+Real-time chat built with Next.js and Pusher.
 
 ![QuickChat](https://img.shields.io/badge/QuickChat-v1.0-violet?style=for-the-badge)
 ![Next.js](https://img.shields.io/badge/Next.js-16.2-black?style=flat-square&logo=next.js)
 ![Pusher](https://img.shields.io/badge/Pusher-Realtime-FF6368?style=flat-square&logo=pusher)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)
 
-## Características
+## Demo
 
-### Mensajería en Tiempo Real
-- Mensajes instantáneos con WebSockets (Pusher)
-- Indicador de conexión en tiempo real
-- Historial de mensajes persistente
+Try it live: [https://realtime-chat-bay.vercel.app](https://realtime-chat-bay.vercel.app)
 
-### Presencia de Usuarios
-- Sistema de presencia con heartbeats (10s)
-- Notificaciones de entrada/salida de usuarios
-- Lista de usuarios activos en la sala
+## Features
 
-### Reacciones
-- Reacciones con emojis (❤️, 😂, 😮, 😢, 👍, 🔥)
-- Toggle de reacciones (mismo emoji para añadir/eliminar)
-- Ver quién reaccionó a cada mensaje
+### Real-Time Messaging
+- Instant messages with WebSockets (Pusher)
+- Real-time connection indicator
+- Persistent message history
 
-### Respuestas de Mensajes
-- Responde a mensajes específicos
-- Vista previa del mensaje respondido
-- Indicador visual de respuesta
+### User Presence
+- Presence system with heartbeats (10s)
+- Join/leave notifications
+- Active users list in the room
 
-### Indicador de Escritura
-- Muestra cuando otros usuarios están escribiendo
-- Animación de puntos con estilo WhatsApp
-- Nombres de usuarios que están escribiendo
+### Reactions
+- Emoji reactions (❤️, 😂, 😮, 😢, 👍, 🔥)
+- Toggle reactions (same emoji to add/remove)
+- See who reacted to each message
 
-### Temas
-- Modo claro y oscuro
-- Cambio de tema desde la configuración
-- Persistencia del tema seleccionado
+### Message Replies
+- Reply to specific messages
+- Preview of replied message
+- Visual reply indicator
 
-### Diseño
-- UI moderna con Tailwind CSS
-- Burbujas de chat estilo WhatsApp
-- Colores aleatorios para cada usuario
-- Diseño responsivo
+### Typing Indicator
+- Shows when other users are typing
+- WhatsApp-style animated dots
+- Names of users who are typing
 
-## Tecnologías
+### Themes
+- Light and dark mode
+- Theme change from settings
+- Selected theme persistence
+
+### Design
+- Modern UI with Tailwind CSS
+- WhatsApp-style chat bubbles
+- Random colors for each user
+- Responsive design
+
+## Tech Stack
 
 - **Frontend**: Next.js 16, React, TypeScript
-- **Estilos**: Tailwind CSS
-- **Tiempo Real**: Pusher Channels
-- **Fuente**: Geist Sans/Mono
+- **Styling**: Tailwind CSS
+- **Real-Time**: Pusher Channels
+- **Font**: Geist Sans/Mono
 
-## Requisitos Previos
+## Prerequisites
 
 - Node.js 18+
-- Cuenta de Pusher (gratuita en [pusher.com](https://pusher.com))
+- Pusher account (free at [pusher.com](https://pusher.com))
 
-## Instalación
+## Installation
 
-1. Clona el repositorio:
+1. Clone the repository:
 ```bash
 git clone <repository-url>
 cd realtime-chat
 ```
 
-2. Instala las dependencias:
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-3. Crea un archivo `.env.local` con tus credenciales de Pusher:
+3. Create a `.env.local` file with your Pusher credentials:
 ```env
 PUSHER_APP_ID=your_app_id
 PUSHER_KEY=your_key
@@ -80,79 +84,79 @@ NEXT_PUBLIC_PUSHER_KEY=your_key
 NEXT_PUBLIC_PUSHER_CLUSTER=your_cluster
 ```
 
-4. Ejecuta el servidor de desarrollo:
+4. Run the development server:
 ```bash
 npm run dev
 ```
 
-5. Abre [http://localhost:3000](http://localhost:3000) en tu navegador
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## Estructura del Proyecto
+## Project Structure
 
 ```
 src/
 ├── app/
 │   ├── api/
 │   │   ├── messages/
-│   │   │   ├── route.ts           # Guardar mensajes
+│   │   │   ├── route.ts           # Store messages
 │   │   │   └── reaction/
-│   │   │       └── route.ts       # Reacciones
+│   │   │       └── route.ts       # Reactions
 │   │   ├── presence/
 │   │   │   └── broadcast/
-│   │   │       └── route.ts       # Eventos de presencia
+│   │   │       └── route.ts       # Presence events
 │   │   ├── typing/
-│   │   │   └── route.ts           # Indicador de escritura
+│   │   │   └── route.ts           # Typing indicator
 │   │   └── pusher/
 │   │       ├── auth/
-│   │       │   └── route.ts       # Auth de Pusher
+│   │       │   └── route.ts       # Pusher auth
 │   │       └── send/
-│   │           └── route.ts       # Eventos arbitrary
+│   │           └── route.ts       # Arbitrary events
 │   ├── chat/
-│   │   ├── ChatContent.tsx        # Contenido del chat
-│   │   ├── ChatHeader.tsx         # Encabezado con usuarios
-│   │   ├── ChatTypingBubble.tsx    # Indicador de escritura
-│   │   ├── Dropdown.tsx           # Componente reutilizable
-│   │   ├── Modal.tsx              # Modal reutilizable
-│   │   ├── MessageInput.tsx       # Input de mensajes
-│   │   ├── MessageList.tsx         # Lista de mensajes
-│   │   ├── MessageReactions.tsx    # Reacciones de mensajes
-│   │   ├── ThemeDialog.tsx         # Diálogo de tema
-│   │   └── useChat.ts             # Hook principal del chat
+│   │   ├── ChatContent.tsx        # Chat content
+│   │   ├── ChatHeader.tsx         # Header with users
+│   │   ├── ChatTypingBubble.tsx   # Typing indicator
+│   │   ├── Dropdown.tsx           # Reusable dropdown
+│   │   ├── Modal.tsx              # Reusable modal
+│   │   ├── MessageInput.tsx       # Message input
+│   │   ├── MessageList.tsx         # Message list
+│   │   ├── MessageReactions.tsx    # Message reactions
+│   │   ├── ThemeDialog.tsx         # Theme dialog
+│   │   └── useChat.ts             # Main chat hook
 │   ├── hooks/
-│   │   └── useTheme.ts            # Hook de tema
+│   │   └── useTheme.ts            # Theme hook
 │   ├── join/
-│   │   ├── layout.tsx             # Layout con metadata
-│   │   └── page.tsx               # Página de unión
-│   ├── globals.css                # Estilos globales
-│   ├── layout.tsx                 # Layout principal
-│   └── page.tsx                   # Redirección a /join
+│   │   ├── layout.tsx             # Layout with metadata
+│   │   └── page.tsx               # Join page
+│   ├── globals.css                # Global styles
+│   ├── layout.tsx                 # Root layout
+│   └── page.tsx                   # Redirect to /join
 └── lib/
-    ├── pusher.ts                  # Cliente Pusher (server)
-    └── pusher-client.ts           # Cliente Pusher (client)
+    ├── pusher.ts                   # Pusher server client
+    └── pusher-client.ts            # Pusher client
 ```
 
 ## API Routes
 
-| Ruta | Método | Descripción |
-|------|--------|-------------|
-| `/api/messages` | GET | Obtener mensajes de la sala |
-| `/api/messages` | POST | Guardar nuevo mensaje |
-| `/api/messages/reaction` | POST | Añadir/quitar reacción |
-| `/api/presence/broadcast` | POST | Broadcast de presencia |
-| `/api/typing` | POST | Indicador de escritura |
-| `/api/pusher/auth` | POST | Autenticación de canal |
-
-## Eventos de Pusher
-
-| Canal | Evento | Descripción |
+| Route | Method | Description |
 |-------|--------|-------------|
-| `chat-{room}` | `new-message` | Nuevo mensaje |
-| `chat-{room}` | `user-joined` | Usuario unido |
-| `chat-{room}` | `user-left` | Usuario salió |
-| `chat-{room}` | `heartbeat` | Heartbeat de presencia |
-| `chat-{room}` | `user-typing` | Usuario escribiendo |
-| `chat-{room}` | `message-reaction` | Reacción a mensaje |
+| `/api/messages` | GET | Get room messages |
+| `/api/messages` | POST | Store new message |
+| `/api/messages/reaction` | POST | Add/remove reaction |
+| `/api/presence/broadcast` | POST | Presence broadcast |
+| `/api/typing` | POST | Typing indicator |
+| `/api/pusher/auth` | POST | Channel authentication |
 
-## Licencia
+## Pusher Events
+
+| Channel | Event | Description |
+|---------|-------|-------------|
+| `chat-{room}` | `new-message` | New message |
+| `chat-{room}` | `user-joined` | User joined |
+| `chat-{room}` | `user-left` | User left |
+| `chat-{room}` | `heartbeat` | Presence heartbeat |
+| `chat-{room}` | `user-typing` | User typing |
+| `chat-{room}` | `message-reaction` | Message reaction |
+
+## License
 
 MIT
