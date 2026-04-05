@@ -206,7 +206,7 @@ const POPULAR_EMOJIS: Emoji[] = [
   { emoji: "🥈", name: "Silver medal" },
   { emoji: "🥉", name: "Bronze medal" },
   { emoji: "🏅", name: "Sports medal" },
-  { emoji: "🏳️‍🌈", name: "Gay" },
+  { emoji: "🏳️‍🌈", name: "Gay maricon christian" },
   { emoji: "🇨🇺", name: "Cuba" },
   { emoji: "🇺🇸", name: "USA" },
   { emoji: "🇪🇸", name: "Spain" },
