@@ -1,36 +1,158 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# QuickChat
 
-## Getting Started
+Chat en tiempo real construido con Next.js y Pusher.
 
-First, run the development server:
+![QuickChat](https://img.shields.io/badge/QuickChat-v1.0-violet?style=for-the-badge)
+![Next.js](https://img.shields.io/badge/Next.js-16.2-black?style=flat-square&logo=next.js)
+![Pusher](https://img.shields.io/badge/Pusher-Realtime-FF6368?style=flat-square&logo=pusher)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)
 
+## Características
+
+### Mensajería en Tiempo Real
+- Mensajes instantáneos con WebSockets (Pusher)
+- Indicador de conexión en tiempo real
+- Historial de mensajes persistente
+
+### Presencia de Usuarios
+- Sistema de presencia con heartbeats (10s)
+- Notificaciones de entrada/salida de usuarios
+- Lista de usuarios activos en la sala
+
+### Reacciones
+- Reacciones con emojis (❤️, 😂, 😮, 😢, 👍, 🔥)
+- Toggle de reacciones (mismo emoji para añadir/eliminar)
+- Ver quién reaccionó a cada mensaje
+
+### Respuestas de Mensajes
+- Responde a mensajes específicos
+- Vista previa del mensaje respondido
+- Indicador visual de respuesta
+
+### Indicador de Escritura
+- Muestra cuando otros usuarios están escribiendo
+- Animación de puntos con estilo WhatsApp
+- Nombres de usuarios que están escribiendo
+
+### Temas
+- Modo claro y oscuro
+- Cambio de tema desde la configuración
+- Persistencia del tema seleccionado
+
+### Diseño
+- UI moderna con Tailwind CSS
+- Burbujas de chat estilo WhatsApp
+- Colores aleatorios para cada usuario
+- Diseño responsivo
+
+## Tecnologías
+
+- **Frontend**: Next.js 16, React, TypeScript
+- **Estilos**: Tailwind CSS
+- **Tiempo Real**: Pusher Channels
+- **Fuente**: Geist Sans/Mono
+
+## Requisitos Previos
+
+- Node.js 18+
+- Cuenta de Pusher (gratuita en [pusher.com](https://pusher.com))
+
+## Instalación
+
+1. Clona el repositorio:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd realtime-chat
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Instala las dependencias:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Crea un archivo `.env.local` con tus credenciales de Pusher:
+```env
+PUSHER_APP_ID=your_app_id
+PUSHER_KEY=your_key
+PUSHER_SECRET=your_secret
+PUSHER_CLUSTER=your_cluster
+NEXT_PUBLIC_PUSHER_KEY=your_key
+NEXT_PUBLIC_PUSHER_CLUSTER=your_cluster
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Ejecuta el servidor de desarrollo:
+```bash
+npm run dev
+```
 
-## Learn More
+5. Abre [http://localhost:3000](http://localhost:3000) en tu navegador
 
-To learn more about Next.js, take a look at the following resources:
+## Estructura del Proyecto
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── messages/
+│   │   │   ├── route.ts           # Guardar mensajes
+│   │   │   └── reaction/
+│   │   │       └── route.ts       # Reacciones
+│   │   ├── presence/
+│   │   │   └── broadcast/
+│   │   │       └── route.ts       # Eventos de presencia
+│   │   ├── typing/
+│   │   │   └── route.ts           # Indicador de escritura
+│   │   └── pusher/
+│   │       ├── auth/
+│   │       │   └── route.ts       # Auth de Pusher
+│   │       └── send/
+│   │           └── route.ts       # Eventos arbitrary
+│   ├── chat/
+│   │   ├── ChatContent.tsx        # Contenido del chat
+│   │   ├── ChatHeader.tsx         # Encabezado con usuarios
+│   │   ├── ChatTypingBubble.tsx    # Indicador de escritura
+│   │   ├── Dropdown.tsx           # Componente reutilizable
+│   │   ├── Modal.tsx              # Modal reutilizable
+│   │   ├── MessageInput.tsx       # Input de mensajes
+│   │   ├── MessageList.tsx         # Lista de mensajes
+│   │   ├── MessageReactions.tsx    # Reacciones de mensajes
+│   │   ├── ThemeDialog.tsx         # Diálogo de tema
+│   │   └── useChat.ts             # Hook principal del chat
+│   ├── hooks/
+│   │   └── useTheme.ts            # Hook de tema
+│   ├── join/
+│   │   ├── layout.tsx             # Layout con metadata
+│   │   └── page.tsx               # Página de unión
+│   ├── globals.css                # Estilos globales
+│   ├── layout.tsx                 # Layout principal
+│   └── page.tsx                   # Redirección a /join
+└── lib/
+    ├── pusher.ts                  # Cliente Pusher (server)
+    └── pusher-client.ts           # Cliente Pusher (client)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## API Routes
 
-## Deploy on Vercel
+| Ruta | Método | Descripción |
+|------|--------|-------------|
+| `/api/messages` | GET | Obtener mensajes de la sala |
+| `/api/messages` | POST | Guardar nuevo mensaje |
+| `/api/messages/reaction` | POST | Añadir/quitar reacción |
+| `/api/presence/broadcast` | POST | Broadcast de presencia |
+| `/api/typing` | POST | Indicador de escritura |
+| `/api/pusher/auth` | POST | Autenticación de canal |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Eventos de Pusher
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Canal | Evento | Descripción |
+|-------|--------|-------------|
+| `chat-{room}` | `new-message` | Nuevo mensaje |
+| `chat-{room}` | `user-joined` | Usuario unido |
+| `chat-{room}` | `user-left` | Usuario salió |
+| `chat-{room}` | `heartbeat` | Heartbeat de presencia |
+| `chat-{room}` | `user-typing` | Usuario escribiendo |
+| `chat-{room}` | `message-reaction` | Reacción a mensaje |
+
+## Licencia
+
+MIT
