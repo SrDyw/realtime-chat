@@ -64,7 +64,7 @@ function getUserColor(userId: string): string {
   return userColorsMap.get(userId)!;
 }
 
-export function useChat(username: string, room: string) {
+export function useChat(username: string | null, room: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [users, setUsers] = useState<UserPresence[]>([]);
@@ -90,11 +90,11 @@ export function useChat(username: string, room: string) {
     return crypto.randomUUID();
   };
 
-  const onUserJoined = useCallback(() => {
+  const joinChat = useCallback((userName: string) => {
     const userId = generateUUID();
     currentUserRef.current = {
       userId,
-      userName: username,
+      userName: userName,
       lastSeen: Date.now(),
       color: getUserColor(userId),
     };
@@ -107,16 +107,13 @@ export function useChat(username: string, room: string) {
         room,
         data: {
           userId,
-          userName: username,
+          userName: userName,
           timestamp: Date.now(),
         },
       }),
     });
-  }, [username, room]);
 
-  const startHeartbeat = useCallback(() => {
     if (heartbeatIntervalRef.current) return;
-
     heartbeatIntervalRef.current = setInterval(() => {
       if (currentUserRef.current) {
         currentUserRef.current.lastSeen = Date.now();
@@ -217,6 +214,8 @@ export function useChat(username: string, room: string) {
 
   const addReaction = useCallback(
     (messageId: string, emoji: string) => {
+      if (!currentUserRef.current || !username) return;
+      
       const msg = messagesRef.current.find((m) => m.id === messageId);
       const existingUserReaction = msg?.reactions?.find(
         (r) => r.userId === username
@@ -457,17 +456,8 @@ export function useChat(username: string, room: string) {
       }
     );
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchMessages().then(() => setIsConnected(true));
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    onUserJoined();
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    startHeartbeat();
-
     cleanupIntervalRef.current = setInterval(cleanupStaleUsers, 15000);
-
     intervalRef.current = setInterval(fetchMessages, 5000);
 
     const handleBeforeUnload = () => {
@@ -490,15 +480,19 @@ export function useChat(username: string, room: string) {
     room,
     username,
     fetchMessages,
-    onUserJoined,
-    startHeartbeat,
     cleanupStaleUsers,
     handleDisconnect,
   ]);
 
+  useEffect(() => {
+    if (username && !currentUserRef.current) {
+      joinChat(username);
+    }
+  }, [username, joinChat]);
+
   const sendMessage = useCallback(
     async (text: string, replyTo?: { id: string; user: string; text: string }) => {
-      if (!text.trim()) return;
+      if (!text.trim() || !username) return;
 
       const message: Message = {
         id: generateMessageId(),
@@ -566,5 +560,14 @@ export function useChat(username: string, room: string) {
     return () => clearInterval(cleanupInterval);
   }, []);
 
-  return { messages, isConnected, users, typingUsers, sendMessage, addReaction, setTyping };
+  return { 
+    messages, 
+    isConnected, 
+    users, 
+    typingUsers, 
+    sendMessage, 
+    addReaction, 
+    setTyping,
+    joinChat 
+  };
 }

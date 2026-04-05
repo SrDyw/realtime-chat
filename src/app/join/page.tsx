@@ -32,9 +32,9 @@ function JoinPageInner() {
     };
 
     const params = new URLSearchParams({
-      username: joinData.username,
       room: joinData.room.replaceAll(' ', '-'),
     });
+    localStorage.setItem("quickchat_username", joinData.username);
     router.push(`/chat?${params.toString()}`);
   };
 
