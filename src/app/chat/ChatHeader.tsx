@@ -6,15 +6,16 @@ import { ThemeDialog } from "./ThemeDialog";
 import { Dropdown } from "./Dropdown";
 import { useTheme } from "../hooks/useTheme";
 
-interface User {
-  id: string;
-  name: string;
+interface UserPresence {
+  userId: string;
+  userName: string;
+  lastSeen: number;
 }
 
 interface ChatHeaderProps {
   room: string;
   isConnected: boolean;
-  users: User[];
+  users: UserPresence[];
 }
 
 export function ChatHeader({ room, isConnected, users }: ChatHeaderProps) {
@@ -24,13 +25,13 @@ export function ChatHeader({ room, isConnected, users }: ChatHeaderProps) {
 
   const usersDisplay = (() => {
     if (users.length === 0) return "1 usuario";
-    if (users.length === 1) return `1 usuario (${users[0].name})`;
-    if (users.length === 2) return `2 usuarios (${users[0].name} y ${users[1].name})`;
-    return `${users.length} usuarios (${users[0].name}, ${users[1].name} y más)`;
+    if (users.length === 1) return `1 usuario (${users[0].userName})`;
+    if (users.length === 2) return `2 usuarios (${users[0].userName} y ${users[1].userName})`;
+    return `${users.length} usuarios (${users[0].userName}, ${users[1].userName} y más)`;
   })();
 
   const usersDropdownContent = users.map((user) => ({
-    label: user.name,
+    label: user.userName,
     icon: <div className="w-2 h-2 rounded-full bg-green-500" />,
     onClick: () => {},
   }));

@@ -22,11 +22,11 @@ interface Message {
 
 interface MessageBubbleProps {
   message: Message;
-  currentUserId: string;
+  currentUserName: string;
   onReact: (messageId: string, emoji: string) => void;
 }
 
-export function MessageBubble({ message, currentUserId, onReact }: MessageBubbleProps) {
+export function MessageBubble({ message, currentUserName, onReact }: MessageBubbleProps) {
   const [showDetails, setShowDetails] = useState(false);
 
   if (message.isSystem) {
@@ -50,7 +50,7 @@ export function MessageBubble({ message, currentUserId, onReact }: MessageBubble
       <MessageReactions
         isOwn={message.isOwn}
         reactions={message.reactions}
-        currentUserId={currentUserId}
+        currentUserName={currentUserName}
         onReact={(emoji) => onReact(message.id, emoji)}
         onShowDetails={() => setShowDetails(true)}
       >
@@ -95,7 +95,7 @@ export function MessageBubble({ message, currentUserId, onReact }: MessageBubble
                 <div key={emoji} className="flex items-center gap-1 bg-gray-100 dark:bg-zinc-700 px-2 py-1 rounded-full">
                   <span className="text-sm">{emoji}</span>
                   <span className="text-xs text-gray-600 dark:text-gray-300">
-                    {users.map(u => u.userName === currentUserId ? "Tú" : u.userName).join(", ")}
+                    {users.map(u => u.userName === currentUserName ? "Tú" : u.userName).join(", ")}
                   </span>
                 </div>
               ))}
@@ -108,11 +108,11 @@ export function MessageBubble({ message, currentUserId, onReact }: MessageBubble
 
 interface MessageListProps {
   messages: Message[];
-  currentUserId: string;
+  currentUserName: string;
   onReact: (messageId: string, emoji: string) => void;
 }
 
-export function MessageList({ messages, currentUserId, onReact }: MessageListProps) {
+export function MessageList({ messages, currentUserName, onReact }: MessageListProps) {
   return (
     <main className="flex-1 overflow-y-auto p-4">
       <div className="max-w-4xl mx-auto space-y-4 pb-12">
@@ -129,7 +129,7 @@ export function MessageList({ messages, currentUserId, onReact }: MessageListPro
         ) : (
           <>
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} currentUserId={currentUserId} onReact={onReact} />
+              <MessageBubble key={msg.id} message={msg} currentUserName={currentUserName} onReact={onReact} />
             ))}
           </>
         )}

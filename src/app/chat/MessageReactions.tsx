@@ -12,14 +12,14 @@ interface MessageReactionsProps {
   children: ReactNode;
   isOwn?: boolean;
   reactions?: Reaction[];
-  currentUserId: string;
+  currentUserName: string;
   onReact: (emoji: string) => void;
   onShowDetails?: () => void;
 }
 
 const REACTIONS = ["❤️", "😂", "😮", "😢", "👍", "🔥"];
 
-export function MessageReactions({ children, isOwn = false, reactions = [], currentUserId, onReact, onShowDetails }: MessageReactionsProps) {
+export function MessageReactions({ children, isOwn = false, reactions = [], currentUserName, onReact, onShowDetails }: MessageReactionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -67,7 +67,7 @@ export function MessageReactions({ children, isOwn = false, reactions = [], curr
   }, {} as Record<string, Reaction[]>);
 
   const hasUserReacted = (emoji: string) => {
-    return reactions.some((r) => r.emoji === emoji && r.userId === currentUserId);
+    return reactions.some((r) => r.emoji === emoji && r.userId === currentUserName);
   };
 
   return (

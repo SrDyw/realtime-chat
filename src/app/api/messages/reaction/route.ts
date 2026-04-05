@@ -3,7 +3,7 @@ import { triggerEvent } from "@/lib/pusher";
 
 export async function POST(request: Request) {
   const { room, messageId, emoji, userId, userName } = await request.json();
-
+  console.log("adding reaction");
   try {
     await triggerEvent(`chat-${room}`, "message-reaction", {
       messageId,
@@ -12,7 +12,8 @@ export async function POST(request: Request) {
       userName,
     });
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Failed to add reaction" }, { status: 500 });
+  } catch(ex) {
+    console.log(ex);
+    return NextResponse.json({ error: "Failed to add reaction" }, { status: 200 });
   }
 }

@@ -21,7 +21,7 @@ function ChatContentInner({ username, room }: { username: string; room: string }
       <ChatHeader room={room} isConnected={isConnected} users={users} />
       <MessageList 
         messages={messages} 
-        currentUserId={username} 
+        currentUserName={username} 
         onReact={(messageId, emoji) => addReaction(messageId, emoji)} 
       />
       <MessageInput onSend={sendMessage} />

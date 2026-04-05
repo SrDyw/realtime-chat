@@ -1,5 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { subscribeToChannel, unsubscribeFromChannel } from "@/lib/pusher-client";
+import {
+  subscribeToChannel,
+  unsubscribeFromChannel,
+} from "@/lib/pusher-client";
 
 interface Reaction {
   emoji: string;
@@ -17,8 +20,13 @@ interface Message {
   reactions?: Reaction[];
 }
 
+interface UserPresence {
+  userId: string;
+  userName: string;
+  lastSeen: number;
+}
+
 let messageCounter = 0;
-let currentUserId: string | null = null;
 let currentRoom: string | null = null;
 
 function generateMessageId(): string {
@@ -28,42 +36,143 @@ function generateMessageId(): string {
 export function useChat(username: string, room: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
+  const [users, setUsers] = useState<UserPresence[]>([]);
+  
   const lastMessageIdRef = useRef<string>("");
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const cleanupIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<ReturnType<typeof subscribeToChannel> | null>(null);
   const pendingMessageIdsRef = useRef<Set<string>>(new Set());
   const pendingReactionsRef = useRef<Set<string>>(new Set());
   const messagesRef = useRef<Message[]>([]);
+  const currentUserRef = useRef<UserPresence | null>(null);
+  const pendingUserEventsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  const generateUUID = (): string => {
+    return crypto.randomUUID();
+  };
+
+  const onUserJoined = useCallback(() => {
+    const userId = generateUUID();
+    currentUserRef.current = {
+      userId,
+      userName: username,
+      lastSeen: Date.now(),
+    };
+
+    fetch("/api/presence/broadcast", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: "user-joined",
+        room,
+        data: {
+          userId,
+          userName: username,
+          timestamp: Date.now(),
+        },
+      }),
+    });
+  }, [username, room]);
+
+  const startHeartbeat = useCallback(() => {
+    if (heartbeatIntervalRef.current) return;
+
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (currentUserRef.current) {
+        currentUserRef.current.lastSeen = Date.now();
+        fetch("/api/presence/broadcast", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event: "heartbeat",
+            room,
+            data: {
+              userId: currentUserRef.current.userId,
+              userName: currentUserRef.current.userName,
+              timestamp: Date.now(),
+            },
+          }),
+        });
+      }
+    }, 10000);
+  }, [room]);
+
+  const cleanupStaleUsers = useCallback(() => {
+    const now = Date.now();
+    const staleThreshold = 30000;
+
+    setUsers((prev) => {
+      const filtered = prev.filter(
+        (u) => now - u.lastSeen < staleThreshold
+      );
+      if (filtered.length !== prev.length) {
+        return filtered;
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleDisconnect = useCallback(() => {
+    if (currentUserRef.current) {
+      fetch("/api/presence/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "user-left",
+          room,
+          data: {
+            userId: currentUserRef.current.userId,
+            userName: currentUserRef.current.userName,
+            timestamp: Date.now(),
+          },
+        }),
+      });
+      currentUserRef.current = null;
+    }
+
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+
+    if (cleanupIntervalRef.current) {
+      clearInterval(cleanupIntervalRef.current);
+      cleanupIntervalRef.current = null;
+    }
+  }, [room]);
 
   const fetchMessages = useCallback(async () => {
     try {
       const url = lastMessageIdRef.current
         ? `/api/messages?room=${room}&sinceId=${lastMessageIdRef.current}`
         : `/api/messages?room=${room}`;
-      
+
       const response = await fetch(url);
       if (response.ok) {
         const newMessages: Message[] = await response.json();
-        
+
         if (newMessages.length > 0) {
           const processed = newMessages.map((msg) => ({
             ...msg,
             isOwn: msg.user === username && !msg.isSystem,
           }));
-          
+
           setMessages((prev) => {
-            const existingIds = new Set(prev.map(m => m.id));
-            const uniqueNew = processed.filter(m => !existingIds.has(m.id));
+            const existingIds = new Set(prev.map((m) => m.id));
+            const uniqueNew = processed.filter((m) => !existingIds.has(m.id));
             if (uniqueNew.length === 0) return prev;
             return [...prev, ...uniqueNew];
           });
-          
-          const maxId = newMessages[newMessages.length - 1]?.id || lastMessageIdRef.current;
+
+          const maxId =
+            newMessages[newMessages.length - 1]?.id ||
+            lastMessageIdRef.current;
           lastMessageIdRef.current = maxId;
         }
       }
@@ -72,92 +181,81 @@ export function useChat(username: string, room: string) {
     }
   }, [username, room]);
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/presence?room=${room}`);
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users || []);
+  const addReaction = useCallback(
+    (messageId: string, emoji: string) => {
+      const msg = messagesRef.current.find((m) => m.id === messageId);
+      const existingUserReaction = msg?.reactions?.find(
+        (r) => r.userId === username
+      );
+
+      const reactionKey = `${messageId}-${emoji}-${username}`;
+
+      if (existingUserReaction?.emoji === emoji) {
+        pendingReactionsRef.current.add(reactionKey);
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (m.id === messageId) {
+              return {
+                ...m,
+                reactions: (m.reactions || []).filter(
+                  (r) => !(r.emoji === emoji && r.userId === username)
+                ),
+              };
+            }
+            return m;
+          })
+        );
+
+        fetch(`/api/messages/reaction`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            room,
+            messageId,
+            emoji,
+            userId: username,
+            userName: username,
+          }),
+        });
+        return;
       }
-    } catch {
-      // Silently fail
-    }
-  }, [room]);
 
-  const registerPresence = useCallback(async () => {
-    try {
-      await fetch("/api/presence", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: username, userName: username, room }),
-      });
-    } catch {
-      // Silently fail
-    }
-  }, [username, room]);
-
-  const handleDisconnect = useCallback(async () => {
-    try {
-      await fetch(`/api/presence?userId=${encodeURIComponent(username)}&userName=${encodeURIComponent(username)}&room=${encodeURIComponent(room)}`, {
-        method: "DELETE",
-      });
-    } catch {
-      // Silently fail
-    }
-  }, [username, room]);
-
-  const addReaction = useCallback((messageId: string, emoji: string) => {
-    const msg = messagesRef.current.find(m => m.id === messageId);
-    const existingUserReaction = msg?.reactions?.find(r => r.userId === username);
-    
-    const reactionKey = `${messageId}-${emoji}-${username}`;
-    
-    if (existingUserReaction?.emoji === emoji) {
       pendingReactionsRef.current.add(reactionKey);
       setMessages((prev) =>
         prev.map((m) => {
           if (m.id === messageId) {
+            const filteredReactions = (m.reactions || []).filter(
+              (r) => r.userId !== username
+            );
             return {
               ...m,
-              reactions: (m.reactions || []).filter((r) => !(r.emoji === emoji && r.userId === username)),
+              reactions: [
+                ...filteredReactions,
+                { emoji, userId: username, userName: username },
+              ],
             };
           }
           return m;
         })
       );
-      
+
       fetch(`/api/messages/reaction`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ room, messageId, emoji, userId: username, userName: username }),
+        body: JSON.stringify({
+          room,
+          messageId,
+          emoji,
+          userId: username,
+          userName: username,
+        }),
       });
-      return;
-    }
-
-    pendingReactionsRef.current.add(reactionKey);
-    setMessages((prev) =>
-      prev.map((m) => {
-        if (m.id === messageId) {
-          const filteredReactions = (m.reactions || []).filter(r => r.userId !== username);
-          return {
-            ...m,
-            reactions: [...filteredReactions, { emoji, userId: username, userName: username }],
-          };
-        }
-        return m;
-      })
-    );
-
-    fetch(`/api/messages/reaction`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ room, messageId, emoji, userId: username, userName: username }),
-    });
-  }, [room, username]);
+    },
+    [room, username]
+  );
 
   useEffect(() => {
     const channelName = `chat-${room}`;
-    currentUserId = username;
     currentRoom = room;
 
     const channel = subscribeToChannel(channelName);
@@ -175,7 +273,7 @@ export function useChat(username: string, room: string) {
       };
 
       setMessages((prev) => {
-        if (prev.some(m => m.id === message.id)) {
+        if (prev.some((m) => m.id === message.id)) {
           return prev;
         }
         return [...prev, message];
@@ -186,64 +284,129 @@ export function useChat(username: string, room: string) {
       }
     });
 
-    channel.bind("user-joined", () => {
-      fetchUsers();
-    });
+    channel.bind(
+      "user-joined",
+      (data: { userId: string; userName: string; timestamp: number }) => {
+        if (data.userId === currentUserRef.current?.userId) return;
 
-    channel.bind("user-left", () => {
-      fetchUsers();
-    });
-
-    channel.bind("message-reaction", (data: { messageId: string; emoji: string; userId: string; userName: string }) => {
-      const reactionKey = `${data.messageId}-${data.emoji}-${data.userId}`;
-      
-      if (pendingReactionsRef.current.has(reactionKey)) {
-        pendingReactionsRef.current.delete(reactionKey);
-        return;
-      }
-
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.id === data.messageId) {
-            const reactions = msg.reactions || [];
-            const filteredReactions = reactions.filter(r => r.userId !== data.userId);
-            
-            return {
-              ...msg,
-              reactions: [...filteredReactions, { emoji: data.emoji, userId: data.userId, userName: data.userName }],
-            };
+        setUsers((prev) => {
+          const exists = prev.some((u) => u.userId === data.userId);
+          if (exists) {
+            return prev.map((u) =>
+              u.userId === data.userId
+                ? { ...u, lastSeen: data.timestamp }
+                : u
+            );
           }
-          return msg;
-        })
-      );
-    });
+          return [
+            ...prev,
+            {
+              userId: data.userId,
+              userName: data.userName,
+              lastSeen: data.timestamp,
+            },
+          ];
+        });
+      }
+    );
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    registerPresence();
+    channel.bind(
+      "user-left",
+      (data: { userId: string; userName: string }) => {
+        setUsers((prev) =>
+          prev.filter((u) => u.userId !== data.userId)
+        );
+      }
+    );
+
+    channel.bind(
+      "heartbeat",
+      (data: { userId: string; userName: string; timestamp: number }) => {
+        if (data.userId === currentUserRef.current?.userId) return;
+
+        setUsers((prev) => {
+          const exists = prev.some((u) => u.userId === data.userId);
+          if (!exists) {
+            return [
+              ...prev,
+              {
+                userId: data.userId,
+                userName: data.userName,
+                lastSeen: data.timestamp,
+              },
+            ];
+          }
+          return prev.map((u) =>
+            u.userId === data.userId
+              ? { ...u, lastSeen: data.timestamp }
+              : u
+          );
+        });
+      }
+    );
+
+    channel.bind(
+      "message-reaction",
+      (data: {
+        messageId: string;
+        emoji: string;
+        userId: string;
+        userName: string;
+      }) => {
+        const reactionKey = `${data.messageId}-${data.emoji}-${data.userId}`;
+
+        if (pendingReactionsRef.current.has(reactionKey)) {
+          pendingReactionsRef.current.delete(reactionKey);
+          return;
+        }
+
+        setMessages((prev) =>
+          prev.map((msg) => {
+            if (msg.id === data.messageId) {
+              const reactions = msg.reactions || [];
+              const filteredReactions = reactions.filter(
+                (r) => r.userId !== data.userId
+              );
+
+              return {
+                ...msg,
+                reactions: [
+                  ...filteredReactions,
+                  {
+                    emoji: data.emoji,
+                    userId: data.userId,
+                    userName: data.userName,
+                  },
+                ],
+              };
+            }
+            return msg;
+          })
+        );
+      }
+    );
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchMessages().then(() => setIsConnected(true));
 
-    fetchUsers();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    onUserJoined();
 
-    intervalRef.current = setInterval(() => {
-      fetchMessages();
-      fetchUsers();
-    }, 5000);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    startHeartbeat();
+
+    cleanupIntervalRef.current = setInterval(cleanupStaleUsers, 15000);
+
+    intervalRef.current = setInterval(fetchMessages, 5000);
 
     const handleBeforeUnload = () => {
-      if (currentUserId === username && currentRoom === room) {
-        handleDisconnect();
-      }
+      handleDisconnect();
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
-      if (currentUserId === username && currentRoom === room) {
-        handleDisconnect();
-      }
-      
+      handleDisconnect();
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
@@ -252,34 +415,45 @@ export function useChat(username: string, room: string) {
       }
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [room, username, fetchMessages, registerPresence, handleDisconnect, fetchUsers]);
+  }, [
+    room,
+    username,
+    fetchMessages,
+    onUserJoined,
+    startHeartbeat,
+    cleanupStaleUsers,
+    handleDisconnect,
+  ]);
 
-  const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim()) return;
+  const sendMessage = useCallback(
+    async (text: string) => {
+      if (!text.trim()) return;
 
-    const message: Message = {
-      id: generateMessageId(),
-      user: username,
-      text: text.trim(),
-      timestamp: new Date().toISOString(),
-      isOwn: true,
-    };
+      const message: Message = {
+        id: generateMessageId(),
+        user: username,
+        text: text.trim(),
+        timestamp: new Date().toISOString(),
+        isOwn: true,
+      };
 
-    pendingMessageIdsRef.current.add(message.id);
-    setMessages((prev) => [...prev, message]);
+      pendingMessageIdsRef.current.add(message.id);
+      setMessages((prev) => [...prev, message]);
 
-    try {
-      await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ room, message }),
-      });
-    } catch {
-      pendingMessageIdsRef.current.delete(message.id);
-      setMessages((prev) => prev.filter(m => m.id !== message.id));
-      console.error("Error sending message");
-    }
-  }, [username, room]);
+      try {
+        await fetch("/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ room, message }),
+        });
+      } catch {
+        pendingMessageIdsRef.current.delete(message.id);
+        setMessages((prev) => prev.filter((m) => m.id !== message.id));
+        console.error("Error sending message");
+      }
+    },
+    [username, room]
+  );
 
   return { messages, isConnected, users, sendMessage, addReaction };
 }

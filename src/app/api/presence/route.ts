@@ -1,3 +1,4 @@
+import { triggerEvent } from "@/lib/pusher";
 import { NextResponse } from "next/server";
 
 interface UserPresence {
@@ -10,20 +11,27 @@ interface UserPresence {
 const users = new Map<string, UserPresence>();
 
 export async function POST(request: Request) {
-  const { userId, userName, room } = await request.json();
+  const { username, room } = await request.json();
 
-  const existingUser = users.get(userId);
-  const wasDisconnected = existingUser?.disconnected;
-
-  users.set(userId, {
-    id: userId,
-    name: userName,
+  console.log({
+    username,
     room,
-    disconnected: false,
   });
 
+  await triggerEvent(`chat-${room}`, "user-joined", username);
+
+  // const existingUser = users.get(userId);
+  // const wasDisconnected = existingUser?.disconnected;
+
+  // users.set(userId, {
+  //   id: userId,
+  //   name: userName,
+  //   room,
+  //   disconnected: false,
+  // });
+
   return NextResponse.json({
-    isFirstJoin: !existingUser || wasDisconnected,
+    message: "ok",
   });
 }
 
@@ -38,20 +46,25 @@ export async function DELETE(request: Request) {
     user.disconnected = true;
 
     if (userName && room) {
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/pusher/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          room,
-          message: {
-            id: `${Date.now()}-${Math.random()}`,
-            user: "Sistema",
-            text: `${userName} ha abandonado el chat`,
-            timestamp: new Date().toISOString(),
-            isSystem: true,
-          },
-        }),
-      });
+      await fetch(
+        `${
+          process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+        }/api/pusher/send`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            room,
+            message: {
+              id: `${Date.now()}-${Math.random()}`,
+              user: "Sistema",
+              text: `${userName} ha abandonado el chat`,
+              timestamp: new Date().toISOString(),
+              isSystem: true,
+            },
+          }),
+        }
+      );
     }
   }
 
