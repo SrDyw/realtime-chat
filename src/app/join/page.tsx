@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "../hooks/useTheme";
+import { Dropdown } from "../chat/Dropdown";
+import { ThemeDialog } from "../chat/ThemeDialog";
 
 interface JoinData {
   username: string;
@@ -11,9 +13,11 @@ interface JoinData {
 
 function JoinPageInner() {
   const router = useRouter();
+  const { darkMode, toggleTheme } = useTheme();
   const [username, setUsername] = useState("");
   const [room, setRoom] = useState("");
   const [error, setError] = useState("");
+  const [showThemeDialog, setShowThemeDialog] = useState(false);
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,10 +38,39 @@ function JoinPageInner() {
     router.push(`/chat?${params.toString()}`);
   };
 
+  const settingsMenu = [
+    {
+      label: "Cambiar tema",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+      ),
+      onClick: () => setShowThemeDialog(true),
+    },
+  ];
+
   return (
-    <div className="min-h-screen flex items-center justify-center  p-4">
+    <div className="min-h-screen relative">
+      <div className="absolute top-4 right-4 z-50">
+        <Dropdown
+          trigger={
+            <button className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors text-gray-600 dark:text-gray-300">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+          }
+          content={settingsMenu}
+          align="right"
+        />
+      </div>
+
       <div className="absolute size-full opacity-5 top-0 left-0 bg-gradient-to-br from-violet-100 via-purple-50 to-fuchsia-50 dark:from-violet-950 dark:via-purple-950 dark:fuchsia-950"></div>
-      <div className="relative w-full max-w-md">
+      
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <div className="relative w-full max-w-md">
         <div className="backdrop-blur-xl bg-white/70 dark:bg-zinc-900/70 rounded-3xl border border-white/50 dark:border-zinc-700/50 shadow-2xl shadow-purple-500/20 dark:shadow-purple-900/30 p-8">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-purple-500/30 mb-4">
@@ -107,10 +140,18 @@ function JoinPageInner() {
           </form>
         </div>
 
-        <p className="text-center text-gray-400 dark:text-gray-500 text-xs mt-6">
-          Chat en tiempo real • Datos en memoria
-        </p>
+          <p className="text-center text-gray-400 dark:text-gray-500 text-xs mt-6">
+            Chat en tiempo real
+          </p>
+        </div>
       </div>
+
+      <ThemeDialog
+        isOpen={showThemeDialog}
+        onClose={() => setShowThemeDialog(false)}
+        darkMode={darkMode}
+        onThemeChange={toggleTheme}
+      />
     </div>
   );
 }
