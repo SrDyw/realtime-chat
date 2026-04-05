@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, ReactNode } from "react";
+import { useState, ReactNode } from "react";
+import { EmojiPickerDialog, EmojiGrid } from "./EmojiPickerDialog";
 
 interface Reaction {
   emoji: string;
@@ -18,44 +19,11 @@ interface MessageReactionsProps {
   onReply?: () => void;
 }
 
-const REACTIONS = ["❤️", "😂", "😮", "😢", "👍", "🔥"];
-
 export function MessageReactions({ children, isOwn = false, reactions = [], currentUserName, onReact, onShowDetails, onReply }: MessageReactionsProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const triggerRef = useRef<HTMLDivElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        triggerRef.current && 
-        !triggerRef.current.contains(e.target as Node) &&
-        popoverRef.current &&
-        !popoverRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [isOpen]);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   const handleReaction = (emoji: string) => {
-    setIsOpen(false);
+    setIsPickerOpen(false);
     onReact(emoji);
   };
 
@@ -67,12 +35,8 @@ export function MessageReactions({ children, isOwn = false, reactions = [], curr
     return acc;
   }, {} as Record<string, Reaction[]>);
 
-  const hasUserReacted = (emoji: string) => {
-    return reactions.some((r) => r.emoji === emoji && r.userId === currentUserName);
-  };
-
   return (
-    <div ref={triggerRef} className="relative w-full">
+    <div className="relative w-full">
       <div>
         {children}
         
@@ -116,7 +80,7 @@ export function MessageReactions({ children, isOwn = false, reactions = [], curr
         <button
           onClick={(e) => {
             e.stopPropagation();
-            setIsOpen(!isOpen);
+            setIsPickerOpen(true);
           }}
           className="text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
         >
@@ -126,36 +90,13 @@ export function MessageReactions({ children, isOwn = false, reactions = [], curr
         </button>
       </div>
 
-      {isOpen && (
-        <div 
-          ref={popoverRef}
-          className={`absolute top-full mt-1 z-50 animate-in fade-in slide-in-from-top-1 duration-150 ${
-            isOwn ? "right-0" : "left-0"
-          }`}
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            className="flex gap-1 px-2 py-1.5 bg-white dark:bg-zinc-800 rounded-full shadow-lg border border-gray-200 dark:border-zinc-700"
-          >
-            {REACTIONS.map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => handleReaction(emoji)}
-                className={`w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-full transition-transform hover:scale-125 active:scale-110 ${
-                  hasUserReacted(emoji) ? "bg-violet-100 dark:bg-violet-900/30" : ""
-                }`}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-          <div 
-            className={`absolute -top-1 w-2 h-2 rotate-45 bg-white dark:bg-zinc-800 border-l border-t border-gray-200 dark:border-zinc-700 ${
-              isOwn ? "right-4" : "left-4"
-            }`} 
-          />
-        </div>
-      )}
+      <EmojiPickerDialog
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        onSelect={handleReaction}
+      >
+        <EmojiGrid onSelect={handleReaction} />
+      </EmojiPickerDialog>
     </div>
   );
 }
