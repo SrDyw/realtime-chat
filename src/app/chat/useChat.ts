@@ -24,19 +24,46 @@ interface UserPresence {
   userId: string;
   userName: string;
   lastSeen: number;
+  color: string;
+}
+
+interface TypingUser {
+  userId: string;
+  userName: string;
+  timestamp: number;
 }
 
 let messageCounter = 0;
 let currentRoom: string | null = null;
 
+const userColorsMap = new Map<string, string>();
+
 function generateMessageId(): string {
   return `${Date.now()}-${++messageCounter}`;
+}
+
+const userColors = [
+  "#8b5cf6", "#ec4899", "#06b6d4", "#10b981", "#f59e0b", 
+  "#ef4444", "#6366f1", "#14b8a6", "#f97316", "#84cc16",
+  "#a855f7", "#22c55e", "#3b82f6", "#f43f5e", "#eab308"
+];
+
+function getRandomColor(): string {
+  return userColors[Math.floor(Math.random() * userColors.length)];
+}
+
+function getUserColor(userId: string): string {
+  if (!userColorsMap.has(userId)) {
+    userColorsMap.set(userId, getRandomColor());
+  }
+  return userColorsMap.get(userId)!;
 }
 
 export function useChat(username: string, room: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [users, setUsers] = useState<UserPresence[]>([]);
+  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   
   const lastMessageIdRef = useRef<string>("");
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -48,6 +75,7 @@ export function useChat(username: string, room: string) {
   const messagesRef = useRef<Message[]>([]);
   const currentUserRef = useRef<UserPresence | null>(null);
   const pendingUserEventsRef = useRef<Set<string>>(new Set());
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -63,6 +91,7 @@ export function useChat(username: string, room: string) {
       userId,
       userName: username,
       lastSeen: Date.now(),
+      color: getUserColor(userId),
     };
 
     fetch("/api/presence/broadcast", {
@@ -289,6 +318,13 @@ export function useChat(username: string, room: string) {
       (data: { userId: string; userName: string; timestamp: number }) => {
         if (data.userId === currentUserRef.current?.userId) return;
 
+        const eventKey = `join-${data.userId}-${data.timestamp}`;
+        if (pendingUserEventsRef.current.has(eventKey)) {
+          return;
+        }
+        pendingUserEventsRef.current.add(eventKey);
+        setTimeout(() => pendingUserEventsRef.current.delete(eventKey), 100);
+
         setUsers((prev) => {
           const exists = prev.some((u) => u.userId === data.userId);
           if (exists) {
@@ -304,6 +340,7 @@ export function useChat(username: string, room: string) {
               userId: data.userId,
               userName: data.userName,
               lastSeen: data.timestamp,
+              color: getUserColor(data.userId),
             },
           ];
         });
@@ -324,6 +361,13 @@ export function useChat(username: string, room: string) {
       (data: { userId: string; userName: string; timestamp: number }) => {
         if (data.userId === currentUserRef.current?.userId) return;
 
+        const eventKey = `heartbeat-${data.userId}-${data.timestamp}`;
+        if (pendingUserEventsRef.current.has(eventKey)) {
+          return;
+        }
+        pendingUserEventsRef.current.add(eventKey);
+        setTimeout(() => pendingUserEventsRef.current.delete(eventKey), 100);
+
         setUsers((prev) => {
           const exists = prev.some((u) => u.userId === data.userId);
           if (!exists) {
@@ -333,6 +377,7 @@ export function useChat(username: string, room: string) {
                 userId: data.userId,
                 userName: data.userName,
                 lastSeen: data.timestamp,
+                color: getUserColor(data.userId),
               },
             ];
           }
@@ -383,6 +428,27 @@ export function useChat(username: string, room: string) {
             return msg;
           })
         );
+      }
+    );
+
+    channel.bind(
+      "user-typing",
+      (data: { userId: string; userName: string; isTyping: boolean }) => {
+        if (data.userId === currentUserRef.current?.userId) return;
+
+        if (data.isTyping) {
+          setTypingUsers((prev) => {
+            const filtered = prev.filter((u) => u.userId !== data.userId);
+            return [
+              ...filtered,
+              { userId: data.userId, userName: data.userName, timestamp: Date.now() },
+            ];
+          });
+        } else {
+          setTypingUsers((prev) =>
+            prev.filter((u) => u.userId !== data.userId)
+          );
+        }
       }
     );
 
@@ -455,5 +521,44 @@ export function useChat(username: string, room: string) {
     [username, room]
   );
 
-  return { messages, isConnected, users, sendMessage, addReaction };
+  const setTyping = useCallback(
+    async (isTyping: boolean) => {
+      if (!currentUserRef.current) return;
+
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+
+      try {
+        await fetch("/api/typing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            room,
+            userId: currentUserRef.current.userId,
+            userName: currentUserRef.current.userName,
+            isTyping,
+          }),
+        });
+      } catch (error) {
+        console.error("Error sending typing status:", error);
+      }
+    },
+    [room]
+  );
+
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      const timeout = 3000;
+      setTypingUsers((prev) =>
+        prev.filter((u) => now - u.timestamp < timeout)
+      );
+    }, 1000);
+
+    return () => clearInterval(cleanupInterval);
+  }, []);
+
+  return { messages, isConnected, users, typingUsers, sendMessage, addReaction, setTyping };
 }

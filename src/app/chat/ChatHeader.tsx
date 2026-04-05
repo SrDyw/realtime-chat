@@ -10,6 +10,7 @@ interface UserPresence {
   userId: string;
   userName: string;
   lastSeen: number;
+  color: string;
 }
 
 interface ChatHeaderProps {
@@ -32,7 +33,7 @@ export function ChatHeader({ room, isConnected, users }: ChatHeaderProps) {
 
   const usersDropdownContent = users.map((user) => ({
     label: user.userName,
-    icon: <div className="w-2 h-2 rounded-full bg-green-500" />,
+    icon: <div className="w-2 h-2 rounded-full" style={{ backgroundColor: user.color }} />,
     onClick: () => {},
   }));
 

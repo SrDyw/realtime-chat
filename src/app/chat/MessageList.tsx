@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { MessageReactions } from "./MessageReactions";
 import { Modal } from "./Modal";
+import ChatTypingBubble from "./ChatTypingBubble";
 
 interface Reaction {
   emoji: string;
@@ -23,10 +24,11 @@ interface Message {
 interface MessageBubbleProps {
   message: Message;
   currentUserName: string;
+  userColor?: string;
   onReact: (messageId: string, emoji: string) => void;
 }
 
-export function MessageBubble({ message, currentUserName, onReact }: MessageBubbleProps) {
+export function MessageBubble({ message, currentUserName, userColor, onReact }: MessageBubbleProps) {
   const [showDetails, setShowDetails] = useState(false);
 
   if (message.isSystem) {
@@ -66,7 +68,10 @@ export function MessageBubble({ message, currentUserName, onReact }: MessageBubb
             }`}
           >
             {!message.isOwn && (
-              <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">
+              <p 
+                className="text-xs font-medium mb-1"
+                style={{ color: userColor || "#8b5cf6" }}
+              >
                 {message.user}
               </p>
             )}
@@ -106,15 +111,74 @@ export function MessageBubble({ message, currentUserName, onReact }: MessageBubb
   );
 }
 
+interface UserPresence {
+  userId: string;
+  userName: string;
+  lastSeen: number;
+  color: string;
+}
+
 interface MessageListProps {
   messages: Message[];
   currentUserName: string;
+  users: UserPresence[];
+  typingUsers: { userId: string; userName: string; timestamp: number }[];
   onReact: (messageId: string, emoji: string) => void;
 }
 
-export function MessageList({ messages, currentUserName, onReact }: MessageListProps) {
+export function MessageList({ messages, currentUserName, users, typingUsers, onReact }: MessageListProps) {
+  const containerRef = useRef<HTMLElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+  const lastMessageCountRef = useRef(0);
+
+  const getUserColor = (userName: string): string => {
+    const user = users.find(u => u.userName === userName);
+    return user?.color || "#8b5cf6";
+  };
+
+  const isNearBottom = () => {
+    const container = containerRef.current;
+    if (!container) return true;
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    return distanceFromBottom < 100;
+  };
+
+  const scrollToBottom = (smooth = true) => {
+    if (smooth) {
+      endRef.current?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      endRef.current?.scrollIntoView();
+    }
+  };
+
+  useEffect(() => {
+    if (lastMessageCountRef.current === 0 && messages.length > 0) {
+      lastMessageCountRef.current = messages.length;
+      scrollToBottom(false);
+      return;
+    }
+
+    if (messages.length > lastMessageCountRef.current) {
+      const newMessage = messages[messages.length - 1];
+      lastMessageCountRef.current = messages.length;
+
+      if (newMessage?.isOwn) {
+        scrollToBottom(true);
+      } else if (isNearBottom()) {
+        scrollToBottom(true);
+      }
+    }
+  }, [messages]);
+
+  useEffect(() => {
+  }, [typingUsers]);
+
   return (
-    <main className="flex-1 overflow-y-auto p-4">
+    <main 
+      ref={containerRef}
+      className="flex-1 overflow-y-auto p-4"
+    >
       <div className="max-w-4xl mx-auto space-y-4 pb-12">
         {messages.length === 0 ? (
           <div className="text-center py-12">
@@ -127,12 +191,24 @@ export function MessageList({ messages, currentUserName, onReact }: MessageListP
             <p className="text-sm text-gray-400 dark:text-gray-500">¡Sé el primero en enviar uno!</p>
           </div>
         ) : (
-          <>
-            {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} currentUserName={currentUserName} onReact={onReact} />
-            ))}
-          </>
+          messages.map((msg) => (
+            <MessageBubble 
+              key={msg.id} 
+              message={msg} 
+              currentUserName={currentUserName} 
+              userColor={getUserColor(msg.user)}
+              onReact={onReact} 
+            />
+          ))
         )}
+
+        {typingUsers.length > 0 && (
+          <div className="flex justify-start pl-2">
+            <ChatTypingBubble users={typingUsers.map(u => u.userName)} />
+          </div>
+        )}
+
+        <div ref={endRef} />
       </div>
     </main>
   );
