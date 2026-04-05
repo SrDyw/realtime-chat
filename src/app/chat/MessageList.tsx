@@ -19,6 +19,11 @@ interface Message {
   isSystem?: boolean;
   isOwn?: boolean;
   reactions?: Reaction[];
+  replyTo?: {
+    id: string;
+    user: string;
+    text: string;
+  };
 }
 
 interface MessageBubbleProps {
@@ -26,9 +31,10 @@ interface MessageBubbleProps {
   currentUserName: string;
   userColor?: string;
   onReact: (messageId: string, emoji: string) => void;
+  onReply?: () => void;
 }
 
-export function MessageBubble({ message, currentUserName, userColor, onReact }: MessageBubbleProps) {
+export function MessageBubble({ message, currentUserName, userColor, onReact, onReply }: MessageBubbleProps) {
   const [showDetails, setShowDetails] = useState(false);
 
   if (message.isSystem) {
@@ -55,6 +61,7 @@ export function MessageBubble({ message, currentUserName, userColor, onReact }: 
         currentUserName={currentUserName}
         onReact={(emoji) => onReact(message.id, emoji)}
         onShowDetails={() => setShowDetails(true)}
+        onReply={onReply}
       >
         <div
           onClick={() => setShowDetails(true)}
@@ -67,6 +74,16 @@ export function MessageBubble({ message, currentUserName, userColor, onReact }: 
                 : "bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-100 rounded-bl-md shadow-sm"
             }`}
           >
+            {message.replyTo && (
+              <div className={`border-l-2 pl-2 mb-2 ${message.isOwn ? "border-violet-300" : "border-gray-300 dark:border-gray-600"}`}>
+                <p className={`text-xs font-medium ${message.isOwn ? "text-violet-200" : "text-violet-600 dark:text-violet-400"}`}>
+                  {message.replyTo.user}
+                </p>
+                <p className={`text-xs truncate ${message.isOwn ? "text-violet-300" : "text-gray-500 dark:text-gray-400"}`}>
+                  {message.replyTo.text}
+                </p>
+              </div>
+            )}
             {!message.isOwn && (
               <p 
                 className="text-xs font-medium mb-1"
@@ -124,9 +141,10 @@ interface MessageListProps {
   users: UserPresence[];
   typingUsers: { userId: string; userName: string; timestamp: number }[];
   onReact: (messageId: string, emoji: string) => void;
+  onReply?: (messageId: string) => void;
 }
 
-export function MessageList({ messages, currentUserName, users, typingUsers, onReact }: MessageListProps) {
+export function MessageList({ messages, currentUserName, users, typingUsers, onReact, onReply }: MessageListProps) {
   const containerRef = useRef<HTMLElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
@@ -198,6 +216,7 @@ export function MessageList({ messages, currentUserName, users, typingUsers, onR
               currentUserName={currentUserName} 
               userColor={getUserColor(msg.user)}
               onReact={onReact} 
+              onReply={onReply ? () => onReply(msg.id) : undefined}
             />
           ))
         )}

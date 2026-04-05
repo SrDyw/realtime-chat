@@ -15,11 +15,12 @@ interface MessageReactionsProps {
   currentUserName: string;
   onReact: (emoji: string) => void;
   onShowDetails?: () => void;
+  onReply?: () => void;
 }
 
 const REACTIONS = ["❤️", "😂", "😮", "😢", "👍", "🔥"];
 
-export function MessageReactions({ children, isOwn = false, reactions = [], currentUserName, onReact, onShowDetails }: MessageReactionsProps) {
+export function MessageReactions({ children, isOwn = false, reactions = [], currentUserName, onReact, onShowDetails, onReply }: MessageReactionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -97,18 +98,33 @@ export function MessageReactions({ children, isOwn = false, reactions = [], curr
         )}
       </div>
       
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsOpen(!isOpen);
-        }}
-        className={`mt-1 text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors ${isOwn ? "flex ml-auto mr-1" : "flex mr-auto ml-1"}`}
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span className="text-xs font-bold ml-0.5">+</span>
-      </button>
+      <div className={`mt-1 flex items-center gap-2 ${isOwn ? "justify-end mr-1" : "justify-start ml-1"}`}>
+        {onReply && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onReply();
+            }}
+            className="text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+          </button>
+        )}
+        
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+          }}
+          className="text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+      </div>
 
       {isOpen && (
         <div 

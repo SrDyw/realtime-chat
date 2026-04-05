@@ -2,15 +2,24 @@
 
 import { useState, useEffect, useRef } from "react";
 
-interface MessageInputProps {
-  onSend: (text: string) => void;
-  onTyping: (isTyping: boolean) => void;
+interface ReplyMessage {
+  id: string;
+  user: string;
+  text: string;
 }
 
-export function MessageInput({ onSend, onTyping }: MessageInputProps) {
+interface MessageInputProps {
+  onSend: (text: string, replyTo?: ReplyMessage) => void;
+  onTyping: (isTyping: boolean) => void;
+  replyMessage?: ReplyMessage;
+  onCancelReply?: () => void;
+}
+
+export function MessageInput({ onSend, onTyping, replyMessage, onCancelReply }: MessageInputProps) {
   const [inputValue, setInputValue] = useState("");
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     return () => {
@@ -22,6 +31,12 @@ export function MessageInput({ onSend, onTyping }: MessageInputProps) {
       }
     };
   }, [onTyping]);
+
+  useEffect(() => {
+    if (replyMessage) {
+      inputRef.current?.focus();
+    }
+  }, [replyMessage]);
 
   const handleTyping = () => {
     if (!isTypingRef.current) {
@@ -51,14 +66,44 @@ export function MessageInput({ onSend, onTyping }: MessageInputProps) {
       onTyping(false);
     }
     
-    onSend(inputValue.trim());
+    onSend(inputValue.trim(), replyMessage);
     setInputValue("");
+    onCancelReply?.();
   };
 
   return (
-    <footer className="sticky bottom-0 backdrop-blur-xl bg-white/80 dark:bg-zinc-900/80 border-t border-gray-200 dark:border-zinc-700 p-4">
-      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex gap-3">
+    <footer className="sticky bottom-0 backdrop-blur-xl bg-white/80 dark:bg-zinc-900/80 border-t border-gray-200 dark:border-zinc-700">
+      {replyMessage && (
+        <div className="max-w-4xl mx-auto px-4 pt-3">
+          <div className="flex items-center gap-3 px-3 py-2 bg-gray-100 dark:bg-zinc-800 rounded-t-xl">
+            <div className="flex-shrink-0">
+              <svg className="w-4 h-4 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-violet-600 dark:text-violet-400 font-medium">
+                Respondiendo a {replyMessage.user}
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                {replyMessage.text}
+              </p>
+            </div>
+            <button
+              onClick={onCancelReply}
+              className="flex-shrink-0 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+            >
+              <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+      
+      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex gap-3 p-4">
         <input
+          ref={inputRef}
           type="text"
           value={inputValue}
           onChange={(e) => {

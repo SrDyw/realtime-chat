@@ -18,6 +18,11 @@ interface Message {
   isSystem?: boolean;
   isOwn?: boolean;
   reactions?: Reaction[];
+  replyTo?: {
+    id: string;
+    user: string;
+    text: string;
+  };
 }
 
 interface UserPresence {
@@ -492,7 +497,7 @@ export function useChat(username: string, room: string) {
   ]);
 
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (text: string, replyTo?: { id: string; user: string; text: string }) => {
       if (!text.trim()) return;
 
       const message: Message = {
@@ -501,6 +506,7 @@ export function useChat(username: string, room: string) {
         text: text.trim(),
         timestamp: new Date().toISOString(),
         isOwn: true,
+        replyTo,
       };
 
       pendingMessageIdsRef.current.add(message.id);
