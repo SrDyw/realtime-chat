@@ -3,33 +3,12 @@ import {
   subscribeToChannel,
   unsubscribeFromChannel,
 } from "@/lib/pusher-client";
+import { Message, ReplyMessage, UserPresence } from "@/types/types";
 
 interface Reaction {
   emoji: string;
   userId: string;
   userName: string;
-}
-
-interface Message {
-  id: string;
-  user: string;
-  text: string;
-  timestamp: string;
-  isSystem?: boolean;
-  isOwn?: boolean;
-  reactions?: Reaction[];
-  replyTo?: {
-    id: string;
-    user: string;
-    text: string;
-  };
-}
-
-interface UserPresence {
-  userId: string;
-  userName: string;
-  lastSeen: number;
-  color: string;
 }
 
 interface TypingUser {
@@ -48,9 +27,21 @@ function generateMessageId(): string {
 }
 
 const userColors = [
-  "#8b5cf6", "#ec4899", "#06b6d4", "#10b981", "#f59e0b", 
-  "#ef4444", "#6366f1", "#14b8a6", "#f97316", "#84cc16",
-  "#a855f7", "#22c55e", "#3b82f6", "#f43f5e", "#eab308"
+  "#8b5cf6",
+  "#ec4899",
+  "#06b6d4",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#6366f1",
+  "#14b8a6",
+  "#f97316",
+  "#84cc16",
+  "#a855f7",
+  "#22c55e",
+  "#3b82f6",
+  "#f43f5e",
+  "#eab308",
 ];
 
 function getRandomColor(): string {
@@ -69,7 +60,7 @@ export function useChat(username: string | null, room: string) {
   const [isConnected, setIsConnected] = useState(false);
   const [users, setUsers] = useState<UserPresence[]>([]);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
-  
+
   const lastMessageIdRef = useRef<string>("");
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -78,7 +69,7 @@ export function useChat(username: string | null, room: string) {
   const pendingMessageIdsRef = useRef<Set<string>>(new Set());
   const pendingReactionsRef = useRef<Set<string>>(new Set());
   const messagesRef = useRef<Message[]>([]);
-  const currentUserRef = useRef<UserPresence | null>(null);
+  const currentUserRef = useRef<UserPresence>(null);
   const pendingUserEventsRef = useRef<Set<string>>(new Set());
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -90,58 +81,75 @@ export function useChat(username: string | null, room: string) {
     return crypto.randomUUID();
   };
 
-  const joinChat = useCallback((userName: string) => {
-    const userId = generateUUID();
-    currentUserRef.current = {
-      userId,
-      userName: userName,
-      lastSeen: Date.now(),
-      color: getUserColor(userId),
-    };
-
-    fetch("/api/presence/broadcast", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        event: "user-joined",
-        room,
-        data: {
+  const joinChat = useCallback(
+    (userName: string) => {
+      if (currentUserRef.current == null) {
+        const userId = generateUUID();
+        const user = {
           userId,
           userName: userName,
-          timestamp: Date.now(),
-        },
-      }),
-    });
+          lastSeen: Date.now(),
+          color: getUserColor(userId),
+        };
 
-    if (heartbeatIntervalRef.current) return;
-    heartbeatIntervalRef.current = setInterval(() => {
-      if (currentUserRef.current) {
-        currentUserRef.current.lastSeen = Date.now();
-        fetch("/api/presence/broadcast", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            event: "heartbeat",
-            room,
-            data: {
-              userId: currentUserRef.current.userId,
-              userName: currentUserRef.current.userName,
-              timestamp: Date.now(),
-            },
-          }),
-        });
+        currentUserRef.current = user;
+        console.log("commited yourself", currentUserRef.current);
       }
-    }, 10000);
-  }, [room]);
+
+      fetch("/api/presence/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "user-joined",
+          room,
+          data: {
+            userId: currentUserRef.current.userId,
+            userName: currentUserRef.current.userName,
+            timestamp: Date.now(),
+          },
+        }),
+      });
+      if (currentUserRef.current != null) {
+        if (
+          users.filter((x) => x.userId == currentUserRef.current?.userId)
+            .length == 0
+        ) {
+          // @ts-ignore
+          setUsers((prev) => [...prev, currentUserRef.current]);
+        }
+      }
+
+      if (heartbeatIntervalRef.current) return;
+      heartbeatIntervalRef.current = setInterval(() => {
+        if (currentUserRef.current) {
+          currentUserRef.current.lastSeen = Date.now();
+          fetch("/api/presence/broadcast", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              event: "heartbeat",
+              room,
+              data: {
+                userId: currentUserRef.current.userId,
+                userName: currentUserRef.current.userName,
+                timestamp: Date.now(),
+              },
+            }),
+          });
+        }
+      }, 500);
+    },
+    [room]
+  );
 
   const cleanupStaleUsers = useCallback(() => {
     const now = Date.now();
     const staleThreshold = 30000;
 
+    console.log("cleaning users");
+
     setUsers((prev) => {
-      const filtered = prev.filter(
-        (u) => now - u.lastSeen < staleThreshold
-      );
+      const filtered = prev.filter((u) => now - u.lastSeen < staleThreshold);
       if (filtered.length !== prev.length) {
         return filtered;
       }
@@ -191,7 +199,8 @@ export function useChat(username: string | null, room: string) {
         if (newMessages.length > 0) {
           const processed = newMessages.map((msg) => ({
             ...msg,
-            isOwn: msg.user === username && !msg.isSystem,
+            isOwn:
+              msg.user.id === currentUserRef.current?.userId && !msg.isSystem,
           }));
 
           setMessages((prev) => {
@@ -202,8 +211,7 @@ export function useChat(username: string | null, room: string) {
           });
 
           const maxId =
-            newMessages[newMessages.length - 1]?.id ||
-            lastMessageIdRef.current;
+            newMessages[newMessages.length - 1]?.id || lastMessageIdRef.current;
           lastMessageIdRef.current = maxId;
         }
       }
@@ -215,7 +223,7 @@ export function useChat(username: string | null, room: string) {
   const addReaction = useCallback(
     (messageId: string, emoji: string) => {
       if (!currentUserRef.current || !username) return;
-      
+
       const msg = messagesRef.current.find((m) => m.id === messageId);
       const existingUserReaction = msg?.reactions?.find(
         (r) => r.userId === username
@@ -302,7 +310,8 @@ export function useChat(username: string | null, room: string) {
 
       const message: Message = {
         ...data,
-        isOwn: data.user === username && !data.isSystem,
+        isOwn:
+          data.user.id === currentUserRef.current?.userId && !data.isSystem,
       };
 
       setMessages((prev) => {
@@ -320,6 +329,7 @@ export function useChat(username: string | null, room: string) {
     channel.bind(
       "user-joined",
       (data: { userId: string; userName: string; timestamp: number }) => {
+        console.log(data);
         if (data.userId === currentUserRef.current?.userId) return;
 
         const eventKey = `join-${data.userId}-${data.timestamp}`;
@@ -333,9 +343,7 @@ export function useChat(username: string | null, room: string) {
           const exists = prev.some((u) => u.userId === data.userId);
           if (exists) {
             return prev.map((u) =>
-              u.userId === data.userId
-                ? { ...u, lastSeen: data.timestamp }
-                : u
+              u.userId === data.userId ? { ...u, lastSeen: data.timestamp } : u
             );
           }
           return [
@@ -351,14 +359,9 @@ export function useChat(username: string | null, room: string) {
       }
     );
 
-    channel.bind(
-      "user-left",
-      (data: { userId: string; userName: string }) => {
-        setUsers((prev) =>
-          prev.filter((u) => u.userId !== data.userId)
-        );
-      }
-    );
+    channel.bind("user-left", (data: { userId: string; userName: string }) => {
+      setUsers((prev) => prev.filter((u) => u.userId !== data.userId));
+    });
 
     channel.bind(
       "heartbeat",
@@ -386,9 +389,7 @@ export function useChat(username: string | null, room: string) {
             ];
           }
           return prev.map((u) =>
-            u.userId === data.userId
-              ? { ...u, lastSeen: data.timestamp }
-              : u
+            u.userId === data.userId ? { ...u, lastSeen: data.timestamp } : u
           );
         });
       }
@@ -445,7 +446,11 @@ export function useChat(username: string | null, room: string) {
             const filtered = prev.filter((u) => u.userId !== data.userId);
             return [
               ...filtered,
-              { userId: data.userId, userName: data.userName, timestamp: Date.now() },
+              {
+                userId: data.userId,
+                userName: data.userName,
+                timestamp: Date.now(),
+              },
             ];
           });
         } else {
@@ -457,7 +462,7 @@ export function useChat(username: string | null, room: string) {
     );
 
     fetchMessages().then(() => setIsConnected(true));
-    cleanupIntervalRef.current = setInterval(cleanupStaleUsers, 15000);
+    cleanupIntervalRef.current = setInterval(cleanupStaleUsers, 30000);
     intervalRef.current = setInterval(fetchMessages, 5000);
 
     const handleBeforeUnload = () => {
@@ -476,13 +481,7 @@ export function useChat(username: string | null, room: string) {
       }
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [
-    room,
-    username,
-    fetchMessages,
-    cleanupStaleUsers,
-    handleDisconnect,
-  ]);
+  }, [room, username, fetchMessages, cleanupStaleUsers, handleDisconnect]);
 
   useEffect(() => {
     if (username && !currentUserRef.current) {
@@ -491,12 +490,15 @@ export function useChat(username: string | null, room: string) {
   }, [username, joinChat]);
 
   const sendMessage = useCallback(
-    async (text: string, replyTo?: { id: string; user: string; text: string }) => {
-      if (!text.trim() || !username) return;
+    async (text: string, replyTo?: ReplyMessage) => {
+      if (!text.trim() || currentUserRef.current == null) return;
 
       const message: Message = {
         id: generateMessageId(),
-        user: username,
+        user: {
+          id: currentUserRef.current.userId,
+          username: currentUserRef.current.userName,
+        },
         text: text.trim(),
         timestamp: new Date().toISOString(),
         isOwn: true,
@@ -552,22 +554,20 @@ export function useChat(username: string | null, room: string) {
     const cleanupInterval = setInterval(() => {
       const now = Date.now();
       const timeout = 3000;
-      setTypingUsers((prev) =>
-        prev.filter((u) => now - u.timestamp < timeout)
-      );
+      setTypingUsers((prev) => prev.filter((u) => now - u.timestamp < timeout));
     }, 1000);
 
     return () => clearInterval(cleanupInterval);
   }, []);
 
-  return { 
-    messages, 
-    isConnected, 
-    users, 
-    typingUsers, 
-    sendMessage, 
-    addReaction, 
+  return {
+    messages,
+    isConnected,
+    users,
+    typingUsers,
+    sendMessage,
+    addReaction,
     setTyping,
-    joinChat 
+    joinChat,
   };
 }

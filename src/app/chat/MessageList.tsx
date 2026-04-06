@@ -4,27 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { MessageReactions } from "./MessageReactions";
 import { Modal } from "./Modal";
 import ChatTypingBubble from "./ChatTypingBubble";
-
-interface Reaction {
-  emoji: string;
-  userId: string;
-  userName: string;
-}
-
-interface Message {
-  id: string;
-  user: string;
-  text: string;
-  timestamp: string;
-  isSystem?: boolean;
-  isOwn?: boolean;
-  reactions?: Reaction[];
-  replyTo?: {
-    id: string;
-    user: string;
-    text: string;
-  };
-}
+import { Message, Reaction } from "@/types/types";
 
 interface MessageBubbleProps {
   message: Message;
@@ -77,7 +57,7 @@ export function MessageBubble({ message, currentUserName, userColor, onReact, on
             {message.replyTo && (
               <div className={`border-l-2 pl-2 mb-2 ${message.isOwn ? "border-violet-300" : "border-gray-300 dark:border-gray-600"}`}>
                 <p className={`text-xs font-medium ${message.isOwn ? "text-violet-200" : "text-violet-600 dark:text-violet-400"}`}>
-                  {message.replyTo.user}
+                  {message.replyTo.user.username}
                 </p>
                 <p className={`text-xs truncate ${message.isOwn ? "text-violet-300" : "text-gray-500 dark:text-gray-400"}`}>
                   {message.replyTo.text}
@@ -89,7 +69,7 @@ export function MessageBubble({ message, currentUserName, userColor, onReact, on
                 className="text-xs font-medium mb-1"
                 style={{ color: userColor || "#8b5cf6" }}
               >
-                {message.user}
+                {message.user.username}
               </p>
             )}
             <p className="text-sm break-words">{message.text}</p>
@@ -103,7 +83,7 @@ export function MessageBubble({ message, currentUserName, userColor, onReact, on
       <Modal isOpen={showDetails} onClose={() => setShowDetails(false)} title="Detalles del mensaje">
         <div className="bg-white dark:bg-zinc-700 rounded-2xl px-4 py-2 max-w-full">
             <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">
-              {message.user}
+              {message.user.username}
             </p>
             <p className="text-gray-800 dark:text-white break-words">{message.text}</p>
             <p className="text-xs mt-1 text-gray-400">
@@ -149,8 +129,8 @@ export function MessageList({ messages, currentUserName, users, typingUsers, onR
   const endRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
 
-  const getUserColor = (userName: string): string => {
-    const user = users.find(u => u.userName === userName);
+  const getUserColor = (userId: string): string => {
+    const user = users.find(u => u.userId === userId);
     return user?.color || "#8b5cf6";
   };
 
@@ -214,7 +194,7 @@ export function MessageList({ messages, currentUserName, users, typingUsers, onR
               key={msg.id} 
               message={msg} 
               currentUserName={currentUserName} 
-              userColor={getUserColor(msg.user)}
+              userColor={getUserColor(msg.user.id)}
               onReact={onReact} 
               onReply={onReply ? () => onReply(msg.id) : undefined}
             />

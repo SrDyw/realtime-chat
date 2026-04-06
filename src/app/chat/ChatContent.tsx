@@ -8,12 +8,9 @@ import { MessageInput } from "./MessageInput";
 import { UsernamePrompt } from "./UsernamePrompt";
 import { useChat } from "./useChat";
 import { useTheme } from "../hooks/useTheme";
+import { ReplyMessage } from "@/types/types";
 
-interface ReplyMessage {
-  id: string;
-  user: string;
-  text: string;
-}
+
 
 function LoadingState() {
   return (
@@ -105,6 +102,7 @@ function ChatView({ username, room, onUsernameRequired }: { username: string; ro
         onTyping={setTyping}
         replyMessage={replyMessage}
         onCancelReply={handleCancelReply}
+        users={users}
       />
     </div>
   );

@@ -56,7 +56,7 @@ export function Dropdown({ trigger, content, align = "right" }: DropdownProps) {
             
             return (
               <button
-                key={item.label}
+                key={index}
                 onClick={() => {
                   if (!item.disabled) {
                     item.onClick?.();

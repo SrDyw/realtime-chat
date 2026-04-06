@@ -20,7 +20,12 @@ interface ChatHeaderProps {
   onChangeUsername?: () => void;
 }
 
-export function ChatHeader({ room, isConnected, users, onChangeUsername }: ChatHeaderProps) {
+export function ChatHeader({
+  room,
+  isConnected,
+  users,
+  onChangeUsername,
+}: ChatHeaderProps) {
   const router = useRouter();
   const { darkMode, toggleTheme } = useTheme();
   const [showThemeDialog, setShowThemeDialog] = useState(false);
@@ -28,31 +33,42 @@ export function ChatHeader({ room, isConnected, users, onChangeUsername }: ChatH
   const usersDisplay = (() => {
     if (users.length === 0) return "1 usuario";
     if (users.length === 1) return `1 usuario (${users[0].userName})`;
-    if (users.length === 2) return `2 usuarios (${users[0].userName} y ${users[1].userName})`;
+    if (users.length === 2)
+      return `2 usuarios (${users[0].userName} y ${users[1].userName})`;
     return `${users.length} usuarios (${users[0].userName}, ${users[1].userName} y más)`;
   })();
 
   const usersDropdownContent = users.map((user) => ({
-    label: user.userName,
-    icon: <div className="w-2 h-2 rounded-full" style={{ backgroundColor: user.color }} />,
+    label: `${user.userName} ${
+      users.filter((x) => x.userName == user.userName).length > 1
+        ? `(${user.userId.substring(0, 4)})`
+        : ""
+    }`,
+    icon: (
+      <div
+        className="w-2 h-2 rounded-full"
+        style={{ backgroundColor: user.color }}
+      />
+    ),
     onClick: () => {},
   }));
 
   const menuDropdownContent = [
-    ...(onChangeUsername ? [{
-      label: "Cambiar nombre",
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      ),
-      onClick: () => onChangeUsername(),
-    }] : []),
     {
       label: "Cambiar tema",
       icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+          />
         </svg>
       ),
       onClick: () => setShowThemeDialog(true),
@@ -60,8 +76,18 @@ export function ChatHeader({ room, isConnected, users, onChangeUsername }: ChatH
     {
       label: "Salir del chat",
       icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+          />
         </svg>
       ),
       onClick: () => {
@@ -77,14 +103,30 @@ export function ChatHeader({ room, isConnected, users, onChangeUsername }: ChatH
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              <svg
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
               </svg>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-semibold text-gray-800 dark:text-white">Chat {room}</h1>
-                <span className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
+                <h1 className="font-semibold text-gray-800 dark:text-white">
+                  Chat {room}
+                </h1>
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    isConnected ? "bg-green-500" : "bg-red-500"
+                  }`}
+                />
               </div>
               <Dropdown
                 trigger={
@@ -101,8 +143,18 @@ export function ChatHeader({ room, isConnected, users, onChangeUsername }: ChatH
           <Dropdown
             trigger={
               <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                <svg
+                  className="w-5 h-5 text-gray-600 dark:text-gray-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                  />
                 </svg>
               </button>
             }
